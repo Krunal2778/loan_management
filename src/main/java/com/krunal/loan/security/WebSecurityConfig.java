@@ -62,10 +62,20 @@ public class WebSecurityConfig {
                 .sessionManagement(sessionManagement -> sessionManagement
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
+                        // Allow Swagger and API documentation endpoints
+                        .requestMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                        ).permitAll()
+                        // Allow authentication endpoints
                         .requestMatchers("/api/auth/signin/**").permitAll()
                         .requestMatchers("/api/auth/refreshtoken/**").permitAll()
                         .requestMatchers("/api/auth/signout/**").permitAll()
                         .requestMatchers("/api/test/**").permitAll()
+                        // Secure all other endpoints
                         .anyRequest().authenticated());
 
         http.authenticationProvider(authenticationProvider());
