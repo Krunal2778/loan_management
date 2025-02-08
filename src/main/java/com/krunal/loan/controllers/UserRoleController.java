@@ -11,10 +11,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
 import jakarta.validation.Valid;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @CrossOrigin(origins = "*", allowedHeaders = "*")
@@ -22,29 +22,20 @@ import java.util.Set;
 @RequestMapping("/api/role")
 public class UserRoleController {
 
-//	@Autowired
-//	private UserRoleRepository userRoleRepository;
-	@Autowired
-	private RoleRepository roleRepository;
-	@Autowired
-	private UserRepository userRepository;
+	private final RoleRepository roleRepository;
+	private final UserRepository userRepository;
 
-//	@PostMapping("/update")
-//	@PreAuthorize("hasRole('ADMIN')")
-//	public ResponseEntity<?> updateRole(@Valid @RequestBody UserRole userRole) {
-//
-//		return userRoleRepository.findById(userRole.getUserId()).map(user -> {
-//			this.userRoleRepository.save(userRole);
-//
-//			return ResponseEntity.ok(new MessageResponse("Role updated successfully!"));
-//		}).orElseThrow(() -> new RuntimeException("Error: Something went wrong while updating role."));
-//	}
+	@Autowired
+	public UserRoleController(RoleRepository roleRepository, UserRepository userRepository) {
+	    this.roleRepository = roleRepository;
+	    this.userRepository = userRepository;
+	}
 
 	@GetMapping("/rolelist")
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<List<Role>> getRoleList() {
 		try {
-			return new ResponseEntity<List<Role>>(this.roleRepository.findAll(), HttpStatus.OK);
+			return new ResponseEntity<>(this.roleRepository.findAll(), HttpStatus.OK);
 		} catch (Exception e) {
 			throw new RuntimeException("Error: Role list not found.");
 		}
@@ -55,7 +46,7 @@ public class UserRoleController {
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<List<User>> getUserList() {
 		try {
-			return new ResponseEntity<List<User>>(this.userRepository.findAll(), HttpStatus.OK);
+			return new ResponseEntity<>(this.userRepository.findAll(), HttpStatus.OK);
 		} catch (Exception e) {
 			throw new RuntimeException("Error: User list not found.");
 		}
@@ -66,29 +57,27 @@ public class UserRoleController {
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<User> updateUser(  @Valid @RequestBody UpdateRoleRequest user) {
 		try {
-           
-			User users = this.userRepository.findByUsername(user.getUsername()).get();
-			users.setEmail(user.getEmail());
 
-			Set<Role> roles = new HashSet<>();
-			Role userRole=null;
-            if (user.getRole().equals("ROLE_ADMIN")) {
-            	userRole = roleRepository.findByName(ERole.ROLE_ADMIN).orElseThrow(() -> new RuntimeException("Error: Role is not found."));	
-			}else if (user.getRole().equals("ROLE_MODERATOR"))
-			{
-				userRole = roleRepository.findByName(ERole.ROLE_MODERATOR).orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-			} else if (user.getRole().equals("ROLE_USER")) 
-			{
-				userRole = roleRepository.findByName(ERole.ROLE_USER).orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+			Optional<User> userOptional = this.userRepository.findByUsername(user.getUsername());
+			if (userOptional.isPresent()) {
+				User users = userOptional.get();
+				users.setEmail(user.getEmail());
+				Set<Role> roles = new HashSet<>();
+				Role userRole = switch (user.getRole()) {
+                    case "ROLE_ADMIN" ->
+                            roleRepository.findByName(ERole.ROLE_ADMIN).orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                    case "ROLE_MODERATOR" ->
+                            roleRepository.findByName(ERole.ROLE_MODERATOR).orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                    case "ROLE_USER" ->
+                            roleRepository.findByName(ERole.ROLE_USER).orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                    default -> null;
+                };
+                roles.add(userRole);
+				users.setRoles(roles);
+				return new ResponseEntity<>(this.userRepository.save(users), HttpStatus.OK);
+			} else {
+				throw new RuntimeException("Error: User not found.");
 			}
-			
-			roles.add(userRole);
-
-			
-
-			users.setRoles(roles);
-			return new ResponseEntity<User>(this.userRepository.save(users), HttpStatus.OK);
-
 		} catch (Exception e) {
 			throw new RuntimeException("Error: User  not found.");
 		}
@@ -98,12 +87,12 @@ public class UserRoleController {
 	@GetMapping("/userdetails/{id}")
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<User> getUserDetailsById(@PathVariable Long id) {
-		try {
-			return new ResponseEntity<User>(this.userRepository.findById(id).get(), HttpStatus.OK);
-		} catch (Exception e) {
-			throw new RuntimeException("Error: User  not found.");
+		Optional<User> userOptional = this.userRepository.findById(id);
+		if (userOptional.isPresent()) {
+			return new ResponseEntity<>(userOptional.get(), HttpStatus.OK);
+		} else {
+			throw new RuntimeException("Error: User not found.");
 		}
-
 	}
 
 }

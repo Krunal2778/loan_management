@@ -18,9 +18,11 @@ import com.krunal.loan.security.services.RefreshTokenService;
 import com.krunal.loan.security.services.UserDetailsImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -29,32 +31,33 @@ import jakarta.validation.Valid;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-  @Autowired
-  AuthenticationManager authenticationManager;
+
+  private final AuthenticationManager authenticationManager;
+  private final UserRepository userRepository;
+  private final RoleRepository roleRepository;
+  private final PasswordEncoder encoder;
+  private final JwtUtils jwtUtils;
+  private final RefreshTokenService refreshTokenService;
 
   @Autowired
-  UserRepository userRepository;
-
-  @Autowired
-  RoleRepository roleRepository;
-
-  @Autowired
-  PasswordEncoder encoder;
-
-  @Autowired
-  JwtUtils jwtUtils;
-
-  @Autowired
-  RefreshTokenService refreshTokenService;
+  public AuthController(AuthenticationManager authenticationManager, UserRepository userRepository,
+                        RoleRepository roleRepository, PasswordEncoder encoder,
+                        JwtUtils jwtUtils, RefreshTokenService refreshTokenService) {
+      this.authenticationManager = authenticationManager;
+      this.userRepository = userRepository;
+      this.roleRepository = roleRepository;
+      this.encoder = encoder;
+      this.jwtUtils = jwtUtils;
+      this.refreshTokenService = refreshTokenService;
+  }
 
   @PostMapping("/signin")
-  public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+  public ResponseEntity<JwtResponse> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 
     Authentication authentication = authenticationManager
         .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
@@ -65,8 +68,7 @@ public class AuthController {
 
     String jwt = jwtUtils.generateJwtToken(userDetails);
 
-    List<String> roles = userDetails.getAuthorities().stream().map(item -> item.getAuthority())
-        .collect(Collectors.toList());
+    List<String> roles = List.copyOf(userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList());
 
     RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
 
@@ -74,8 +76,9 @@ public class AuthController {
         userDetails.getUsername(), userDetails.getEmail(), roles));
   }
 
-  @PostMapping("/signup")
-  public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
+  @PostMapping("/adduser")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<MessageResponse> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
     if (Boolean.TRUE.equals(userRepository.existsByUsername(signUpRequest.getUsername()))) {
       return ResponseEntity.badRequest().body(new MessageResponse("Error: Username is already taken!"));
     }
@@ -86,8 +89,8 @@ public class AuthController {
 
     // Create new user's account
     User user = new User(signUpRequest.getUsername(), signUpRequest.getEmail(),
-        encoder.encode(signUpRequest.getPassword()));
-
+        encoder.encode(signUpRequest.getPassword()), signUpRequest.getPhoneNo());
+    user.setAddUser(jwtUtils.getLoggedInUserDetails().getId());
     Set<String> strRoles = signUpRequest.getRole();
     Set<Role> roles = new HashSet<>();
 
@@ -125,7 +128,7 @@ public class AuthController {
   }
                
   @PostMapping("/refreshtoken")
-  public ResponseEntity<?> refreshtoken(@Valid @RequestBody TokenRefreshRequest request) {
+  public ResponseEntity<TokenRefreshResponse> refreshtoken(@Valid @RequestBody TokenRefreshRequest request) {
     String requestRefreshToken = request.getRefreshToken();
 
     return refreshTokenService.findByToken(requestRefreshToken)
@@ -140,11 +143,12 @@ public class AuthController {
   }
   
   @PostMapping("/signout")
-  public ResponseEntity<?> logoutUser() {
+  public ResponseEntity<MessageResponse> logoutUser() {
     UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     Long userId = userDetails.getId();
     refreshTokenService.deleteByUserId(userId);
     return ResponseEntity.ok(new MessageResponse("Log out successful!"));
   }
+
 
 }
