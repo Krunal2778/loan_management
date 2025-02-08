@@ -62,6 +62,7 @@ public class UserRoleController {
 			if (userOptional.isPresent()) {
 				User users = userOptional.get();
 				users.setEmail(user.getEmail());
+				users.setPhoneNo(user.getPhoneNo());
 				Set<Role> roles = new HashSet<>();
 				Role userRole = switch (user.getRole()) {
                     case "ROLE_ADMIN" ->
