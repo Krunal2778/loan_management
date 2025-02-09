@@ -47,7 +47,10 @@ public class User {
 	private String phoneNo;
 
 	@Column(nullable = false)
-	private int status;
+	private Long status;
+
+	@Transient
+	private String statusName;
 
 	@Column(nullable = false)
 	private Long addUser;
@@ -68,7 +71,7 @@ public class User {
 		this.email = email;
 		this.password = password;
 		this.phoneNo = phoneNo;
-		this.status = 1;
+		this.status = 1L;
 		this.addDate = new Date();
 	}
 }

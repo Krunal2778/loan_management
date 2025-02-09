@@ -3,9 +3,11 @@ package com.krunal.loan.controllers;
 import com.krunal.loan.models.ERole;
 import com.krunal.loan.models.Role;
 import com.krunal.loan.models.User;
+import com.krunal.loan.models.UserStatus;
 import com.krunal.loan.payload.request.UpdateRoleRequest;
 import com.krunal.loan.repository.RoleRepository;
 import com.krunal.loan.repository.UserRepository;
+import com.krunal.loan.repository.UserStatusRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,12 +26,14 @@ public class UserRoleController {
 
 	private final RoleRepository roleRepository;
 	private final UserRepository userRepository;
+	private final UserStatusRepository userStatusRepository;
 
 	@Autowired
-	public UserRoleController(RoleRepository roleRepository, UserRepository userRepository) {
+	public UserRoleController(RoleRepository roleRepository, UserRepository userRepository, UserStatusRepository userStatusRepository) {
 	    this.roleRepository = roleRepository;
 	    this.userRepository = userRepository;
-	}
+        this.userStatusRepository = userStatusRepository;
+    }
 
 	@GetMapping("/rolelist")
 	@PreAuthorize("hasRole('ADMIN')")
@@ -46,7 +50,13 @@ public class UserRoleController {
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<List<User>> getUserList() {
 		try {
-			return new ResponseEntity<>(this.userRepository.findAll(), HttpStatus.OK);
+			List<User> users = this.userRepository.findAll();
+			users.forEach(user -> {
+				UserStatus user3 = this.userStatusRepository.findById(user.getStatus())
+			            .orElseThrow(() -> new RuntimeException("Error: User status not found."));
+			    user.setStatusName(user3.getStatusName());
+			});
+			return new ResponseEntity<>(users, HttpStatus.OK);
 		} catch (Exception e) {
 			throw new RuntimeException("Error: User list not found.");
 		}
@@ -85,11 +95,75 @@ public class UserRoleController {
 
 	}
 
+	@PutMapping("/deleteuser/{id}")
+	@PreAuthorize("hasRole('ADMIN')")
+	public ResponseEntity<User> deleteUser(  @Valid @PathVariable Long id) {
+		try {
+
+			Optional<User> userOptional = this.userRepository.findById(id);
+			if (userOptional.isPresent()) {
+				User users = userOptional.get();
+				users.setStatus(0L);
+				return new ResponseEntity<>(this.userRepository.save(users), HttpStatus.OK);
+			} else {
+				throw new RuntimeException("Error: User not found.");
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("Error: User  not found.");
+		}
+
+	}
+
+	@PutMapping("/inactivateduser/{id}")
+	@PreAuthorize("hasRole('ADMIN')")
+	public ResponseEntity<User> inactivatedUser(  @Valid @PathVariable Long id) {
+		try {
+
+			Optional<User> userOptional = this.userRepository.findById(id);
+			if (userOptional.isPresent()) {
+				User users = userOptional.get();
+				users.setStatus(2L);
+				return new ResponseEntity<>(this.userRepository.save(users), HttpStatus.OK);
+			} else {
+				throw new RuntimeException("Error: User not found.");
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("Error: User  not found.");
+		}
+
+	}
+
+	@PutMapping("/activateduser/{id}")
+	@PreAuthorize("hasRole('ADMIN')")
+	public ResponseEntity<User> activatedUser(  @Valid @PathVariable Long id) {
+		try {
+
+			Optional<User> userOptional = this.userRepository.findById(id);
+			if (userOptional.isPresent()) {
+				User users = userOptional.get();
+				users.setStatus(1L);
+				return new ResponseEntity<>(this.userRepository.save(users), HttpStatus.OK);
+			} else {
+				throw new RuntimeException("Error: User not found.");
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("Error: User  not found.");
+		}
+
+	}
+
+
+
 	@GetMapping("/userdetails/{id}")
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<User> getUserDetailsById(@PathVariable Long id) {
 		Optional<User> userOptional = this.userRepository.findById(id);
 		if (userOptional.isPresent()) {
+			userOptional.ifPresent(user -> {
+			    UserStatus userStatus = this.userStatusRepository.findById(user.getStatus())
+			            .orElseThrow(() -> new RuntimeException("Error: User status not found."));
+			    user.setStatusName(userStatus.getStatusName());
+			});
 			return new ResponseEntity<>(userOptional.get(), HttpStatus.OK);
 		} else {
 			throw new RuntimeException("Error: User not found.");
