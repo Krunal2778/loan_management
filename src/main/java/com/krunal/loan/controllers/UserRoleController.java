@@ -77,8 +77,8 @@ public class UserRoleController {
 				Role userRole = switch (user.getRole()) {
                     case "ROLE_ADMIN" ->
                             roleRepository.findByName(ERole.ROLE_ADMIN).orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                    case "ROLE_MODERATOR" ->
-                            roleRepository.findByName(ERole.ROLE_MODERATOR).orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                    case "ROLE_MANAGER" ->
+                            roleRepository.findByName(ERole.ROLE_MANAGER).orElseThrow(() -> new RuntimeException("Error: Role is not found."));
                     case "ROLE_USER" ->
                             roleRepository.findByName(ERole.ROLE_USER).orElseThrow(() -> new RuntimeException("Error: Role is not found."));
                     default -> null;

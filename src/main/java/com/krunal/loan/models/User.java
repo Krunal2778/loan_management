@@ -66,12 +66,13 @@ public class User {
 			inverseJoinColumns = @JoinColumn(name = "role_id"))
 	private Set<Role> roles = new HashSet<>();
 
-	public User(String username, String email, String password, String phoneNo) {
+	public User(String username, String email, String password, String phoneNo,String filePath) {
 		this.username = username;
 		this.email = email;
 		this.password = password;
 		this.phoneNo = phoneNo;
 		this.status = 1L;
 		this.addDate = new Date();
+		this.filePath = filePath;
 	}
 }

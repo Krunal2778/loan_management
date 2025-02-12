@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Set;
  @Getter
@@ -29,5 +30,7 @@ public class SignupRequest {
 
     @Size(min = 10, max = 15)
     private String phoneNo;
+
+    private String base64Image;
 
 }
