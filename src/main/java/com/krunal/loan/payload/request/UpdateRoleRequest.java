@@ -27,6 +27,8 @@ public class UpdateRoleRequest {
 	@Size(max = 15)
 	private String phoneNo;
 
+	private String base64Image;
+
 	public UpdateRoleRequest(@NotBlank @Size(min = 3, max = 20) String username,
 			@NotBlank @Size(max = 50) @Email String email, @NotBlank @Size(min = 3, max = 20) String role, @Size(max = 15) String phoneNo) {
 		super();

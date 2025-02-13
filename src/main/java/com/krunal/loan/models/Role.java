@@ -1,9 +1,17 @@
 package com.krunal.loan.models;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "roles")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class Role {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -13,27 +21,7 @@ public class Role {
 	@Column(length = 20)
 	private ERole name;
 
-	public Role() {
+	@Column(length = 1)
+	private int status = 1;
 
-	}
-
-	public Role(ERole name) {
-		this.name = name;
-	}
-
-	public Integer getId() {
-		return id;
-	}
-
-	public void setId(Integer id) {
-		this.id = id;
-	}
-
-	public ERole getName() {
-		return name;
-	}
-
-	public void setName(ERole name) {
-		this.name = name;
-	}
 }

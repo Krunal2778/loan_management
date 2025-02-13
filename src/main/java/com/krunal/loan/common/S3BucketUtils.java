@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -13,12 +12,10 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
-
-import java.io.BufferedInputStream;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Base64;
 import java.util.Date;
+import java.util.Random;
 
 @Component
 public class S3BucketUtils {
@@ -30,6 +27,7 @@ public class S3BucketUtils {
     private static final String ERROR_MESSAGE = "Error";
 
     private final S3Client s3Client;
+    private static final Random random = new Random();
 
     @Autowired
     public S3BucketUtils(S3Client s3Client) {
@@ -44,9 +42,10 @@ public class S3BucketUtils {
         if (base64Image != null && !base64Image.isEmpty()) {
             // Decode the base64 image
             imageBytes = Base64.getDecoder().decode(base64Image);
-            String imageName = "-image.jpg";
+            String imageName = "_image.jpg";
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
-            key = String.format("%s/%s", sdf.format(curDate), imageName);
+            int randomNumber = random.nextInt(90000000) + 10000000;
+            key = String.format("%s%s", sdf.format(curDate)+ "/"+randomNumber, imageName);
         } else {
             logger.error("Error no image provided");
             return ERROR_MESSAGE;
@@ -68,7 +67,7 @@ public class S3BucketUtils {
         }
     }
 
-    public byte[] getFileFromS3(String key) {
+    public String getFileFromS3(String key) {
         try {
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucketName)
@@ -77,10 +76,11 @@ public class S3BucketUtils {
 
             ResponseBytes<GetObjectResponse> objectBytes = s3Client.getObjectAsBytes(getObjectRequest);
             logger.info("Successfully downloaded image with key: {}", key);
-            return objectBytes.asByteArray();
+            byte[] byteArray = objectBytes.asByteArray();
+            return Base64.getEncoder().encodeToString(byteArray);
         } catch (S3Exception e) {
             logger.error("Failed to download image from S3: {}", e.awsErrorDetails().errorMessage());
-            return ERROR_MESSAGE.getBytes();
+            return ERROR_MESSAGE;
         }
     }
 }

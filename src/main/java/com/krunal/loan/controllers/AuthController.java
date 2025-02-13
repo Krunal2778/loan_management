@@ -89,9 +89,16 @@ public class AuthController {
     if (Boolean.TRUE.equals(userRepository.existsByEmail(signUpRequest.getEmail()))) {
       return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
     }
+    if (signUpRequest.getPassword().length() < 6) {
+      return ResponseEntity.badRequest().body(new MessageResponse("Error: Password must be at least 6 characters!"));
+    }
+
     String filePath = null;
     if (signUpRequest.getBase64Image() != null){
       filePath = bucketUtils3.uploadImageToS3Bucket(signUpRequest.getBase64Image());
+      if (filePath.equals("Error")) {
+        return ResponseEntity.badRequest().body(new MessageResponse("Error: Uploading file to S3"));
+      }
     }
 
     // Create new user's account

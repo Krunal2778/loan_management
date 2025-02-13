@@ -52,6 +52,9 @@ public class User {
 	@Transient
 	private String statusName;
 
+	@Transient
+	private String base64Image;
+
 	@Column(nullable = false)
 	private Long addUser;
 
