@@ -37,6 +37,11 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	// Exclude android-json to avoid conflict with org.json
+	implementation('com.vaadin.external.google:android-json:0.0.20131108.vaadin1') {
+		exclude group: 'org.json', module: 'json'
+	}
 }
 
 tasks.named('test') {
