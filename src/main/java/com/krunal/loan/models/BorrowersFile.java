@@ -25,6 +25,9 @@ public class BorrowersFile {
 	@NotBlank
 	private String filePath;
 
+	@Column(length = 10)
+	private String fileType;
+
 	@Column(length = 1)
 	private int status = 1;
 
