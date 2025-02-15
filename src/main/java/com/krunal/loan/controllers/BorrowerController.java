@@ -13,6 +13,7 @@ import com.krunal.loan.repository.BorrowerRepository;
 import com.krunal.loan.repository.BorrowersFileRepository;
 import com.krunal.loan.repository.UserStatusRepository;
 import com.krunal.loan.security.jwt.JwtUtils;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,10 +21,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+
+import java.util.*;
 
 @CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
 @RestController
@@ -52,6 +51,7 @@ public class BorrowerController {
 
     @PostMapping("/addborrower")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
+    @Transactional
     public ResponseEntity<MessageResponse> registerBorrower(@Valid @RequestBody BorrowerRequest borrowerRequest) {
         logger.info("Registering borrower with email: {}", borrowerRequest.getEmail());
 
@@ -63,35 +63,51 @@ public class BorrowerController {
         Set<String> stringBase64Image = borrowerRequest.getBase64Image();
         Set<BorrowersFile> base64Images = new HashSet<>();
 
-        if (stringBase64Image == null) {
-            logger.warn("No image provided for borrower with email: {}", borrowerRequest.getEmail());
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: No image provided"));
-        } else {
-            stringBase64Image.forEach(base64Image -> {
-                BorrowersFile borrowersFile = new BorrowersFile();
-                String filePath = bucketUtils3.uploadImageToS3Bucket(base64Image);
-                if (filePath.equals("Error")) {
-                    logger.error("Error uploading file to S3 for borrower with email: {}", borrowerRequest.getEmail());
-                    throw new FileUploadException("Error: Uploading file to S3");
-                }
-                borrowersFile.setFilePath(filePath);
-                borrowersFile.setFileType("Borrower");
-                borrowersFile.setStatus(1);
-                base64Images.add(borrowersFile);
-            });
-        }
-
         Borrower borrower = getBorrower(borrowerRequest);
         borrower.setStatus(1L); // 1 for active
         borrower.setAddUser(jwtUtils.getLoggedInUserDetails().getId());
-        if (!base64Images.isEmpty()) {
-            borrower.setBorrowersFiles(base64Images);
-        }
+
+        // Set the userAccount using a temporary value
+        borrower.setUserAccount("TEMP");
 
         borrower = borrowerRepository.save(borrower); // Save the borrower to generate the borrowerId
         logger.info("Borrower saved with ID: {}", borrower.getBorrowerId());
 
-        borrower.setUserAccount("AC000" + borrower.getBorrowerId()); // Set the userAccount using the borrowerId
+        if (stringBase64Image == null) {
+            logger.warn("No image provided for borrower with email: {}", borrowerRequest.getEmail());
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: No image provided"));
+        } else {
+            Borrower finalBorrower = borrower;
+            stringBase64Image.forEach(base64Image -> {
+                try {
+                    // Validate Base64 string
+                    Base64.getDecoder().decode(base64Image);
+
+                    BorrowersFile borrowersFile = new BorrowersFile();
+                    String filePath = bucketUtils3.uploadImageToS3Bucket(base64Image);
+                    if (filePath.equals("Error")) {
+                        logger.error("Error uploading file to S3 for borrower with email: {}", borrowerRequest.getEmail());
+                        throw new FileUploadException("Error: Uploading file to S3");
+                    }
+
+                    borrowersFile.setFilePath(filePath);
+                    borrowersFile.setFileType("Borrower");
+                    borrowersFile.setStatus(1);
+                    borrowersFile.setBorrowerId(finalBorrower.getBorrowerId()); // Set the borrowerId
+                    base64Images.add(borrowersFile);
+                } catch (IllegalArgumentException e) {
+                    logger.error("Invalid Base64 input for borrower with email: {}", borrowerRequest.getEmail(), e);
+                    throw new FileUploadException("Error: Invalid Base64 input");
+                }
+            });
+        }
+
+        if (!base64Images.isEmpty()) {
+            base64Images.forEach(borrower::addBorrowersFile);
+        }
+
+        // Set the userAccount using the borrowerId formatted to 7 digits
+        borrower.setUserAccount(String.format("OD-%07d", borrower.getBorrowerId()));
         borrowerRepository.save(borrower); // Save the borrower again with the updated userAccount
         logger.info("Borrower user account set to: {}", borrower.getUserAccount());
 
@@ -155,7 +171,7 @@ public class BorrowerController {
         return base64Images;
     }
 
-    @GetMapping("/borrower/{id}")
+    @GetMapping("/{id}")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<Borrower> getBorrowerById(@PathVariable Long id) {
         logger.info("Fetching borrower with ID: {}", id);
@@ -184,7 +200,7 @@ public class BorrowerController {
 
     }
 
-    @GetMapping("/borrowers")
+    @GetMapping("/borrowerlist")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<Borrower>> getAllBorrowers() {
         logger.info("Fetching all borrowers");
@@ -198,7 +214,7 @@ public class BorrowerController {
     }
 
 
-    @GetMapping("/borrowers/defaulters")
+    @GetMapping("/defaulterslist")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<Borrower>> getDefaulterBorrowers() {
         logger.info("Fetching all borrowers with defaulter status");
@@ -213,7 +229,7 @@ public class BorrowerController {
     }
 
 
-    @PutMapping("/borrower/{id}/suspended")
+    @PutMapping("/{id}/suspended")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MessageResponse> suspendedBorrower(@PathVariable Long id) {
         logger.info("Disapproving borrower with ID: {}", id);
@@ -234,7 +250,7 @@ public class BorrowerController {
         return ResponseEntity.ok(new MessageResponse("Borrower approved successfully!"));
     }
 
-    @DeleteMapping("/borrower/{id}")
+    @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MessageResponse> deleteBorrower(@PathVariable Long id) {
         logger.info("Deleting borrower with ID: {}", id);
@@ -251,7 +267,7 @@ public class BorrowerController {
         return ResponseEntity.ok(new MessageResponse("Borrower deleted successfully!"));
     }
 
-    @PutMapping("/borrower/{id}/defaulter")
+    @PutMapping("/{id}/defaulter")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<MessageResponse> markBorrowerAsDefaulter(@PathVariable Long id) {
         logger.info("Marking borrower with ID: {} as defaulter", id);
@@ -272,7 +288,7 @@ public class BorrowerController {
         return ResponseEntity.ok(new MessageResponse("Borrower marked as defaulter successfully!"));
     }
 
-    @GetMapping("/borrowers/search")
+    @GetMapping("/search")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<Borrower>> searchBorrowers(@RequestParam String keyword) {
         logger.info("Searching borrowers with keyword: {}", keyword);

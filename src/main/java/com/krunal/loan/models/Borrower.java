@@ -3,7 +3,7 @@ package com.krunal.loan.models;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -16,11 +16,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "borrowers",
-		uniqueConstraints = {
-				@UniqueConstraint(columnNames = "user_account"),
-				@UniqueConstraint(columnNames = "email")
-		})
+@Table(name = "borrowers")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -29,8 +25,7 @@ public class Borrower {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long borrowerId;
 
-	@NotBlank
-	@Size(max = 20)
+	@Column(length = 20, unique = true)
 	private String userAccount;
 
 	@Size(max = 50)
@@ -43,28 +38,29 @@ public class Borrower {
 	@Email
 	private String email;
 
-	@Size(max = 15)
+	@Size(min = 10, max = 15)
 	private String phoneNo;
 
 	@Size(max = 300)
 	private String address;
 
-	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
+	@Temporal(TemporalType.DATE)
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
 	private Date dob;
 
 	@Size(max = 300)
 	private String notes;
 
-	@Column(nullable = false)
+	@NotNull
 	private Long status;
 
 	@Transient
 	private String statusName;
 
-	@Column(nullable = false)
+	@NotNull
 	private Long addUser;
 
-	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Kolkata")
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 	@CreationTimestamp
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(updatable = false)
@@ -72,11 +68,21 @@ public class Borrower {
 
 	private Long updatedUser;
 
-	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Kolkata")
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 	@UpdateTimestamp
 	@Temporal(TemporalType.TIMESTAMP)
 	private Date updatedDate;
 
 	@OneToMany(mappedBy = "borrower", cascade = CascadeType.ALL, orphanRemoval = true)
 	private Set<BorrowersFile> borrowersFiles = new HashSet<>();
+
+	public void addBorrowersFile(BorrowersFile borrowersFile) {
+		borrowersFiles.add(borrowersFile);
+		borrowersFile.setBorrower(this);
+	}
+
+	public void removeBorrowersFile(BorrowersFile borrowersFile) {
+		borrowersFiles.remove(borrowersFile);
+		borrowersFile.setBorrower(null);
+	}
 }
