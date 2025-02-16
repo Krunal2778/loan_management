@@ -19,7 +19,7 @@ public class BorrowersFile {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private long id;
 
-	@Column(name = "borrower_id", nullable = true)
+	@Column(name = "borrower_id", nullable = false)
 	private Long borrowerId;
 
 	@NotBlank

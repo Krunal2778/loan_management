@@ -69,7 +69,9 @@ public class UserRoleController {
     public ResponseEntity<List<User>> getUserList() {
         logger.info("Fetching user list");
         try {
-            List<User> users = this.userRepository.findAll();
+            List<User> users = this.userRepository.findAll().stream()
+                    .filter(user -> user.getStatus() != 0)
+                    .toList();
             users.forEach(user -> {
                 UserStatus userStatus = this.userStatusRepository.findByIdAndStatusType(user.getStatus(),"USER")
                         .orElseThrow(() -> new UserStatusNotFoundException(USER_STATUS_NOT_FOUND_ERROR));
