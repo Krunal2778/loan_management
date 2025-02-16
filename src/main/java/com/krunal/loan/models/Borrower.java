@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -20,7 +21,7 @@ import java.util.Set;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Borrower {
+public class Borrower  {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long borrowerId;
@@ -44,8 +45,7 @@ public class Borrower {
 	@Size(max = 300)
 	private String address;
 
-	@Temporal(TemporalType.DATE)
-	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")  // 💡 Fix
 	private Date dob;
 
 	@Size(max = 300)

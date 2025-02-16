@@ -56,6 +56,9 @@ public class Emi {
     @Transient
     private String base64Image;
 
+    @Size(max = 300)
+    private String notes;
+
     @Column(nullable = false)
     private Long addUser;
 

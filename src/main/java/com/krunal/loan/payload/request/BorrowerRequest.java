@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serializable;
 import java.util.Date;
 import java.util.Set;
 
@@ -15,7 +16,7 @@ import java.util.Set;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class BorrowerRequest {
+public class BorrowerRequest implements Serializable {
     @Size(max = 50)
     private String name;
 
@@ -33,7 +34,7 @@ public class BorrowerRequest {
     private String address;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
-    private Date dob;
+    private String dob;
 
     @Size(max = 300)
     private String notes;

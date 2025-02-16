@@ -1,5 +1,6 @@
 package com.krunal.loan.controllers;
 
+import com.krunal.loan.common.DateUtils;
 import com.krunal.loan.common.S3BucketUtils;
 import com.krunal.loan.exception.BorrowerNotFoundException;
 import com.krunal.loan.exception.FileUploadException;
@@ -10,7 +11,6 @@ import com.krunal.loan.models.UserStatus;
 import com.krunal.loan.payload.request.BorrowerRequest;
 import com.krunal.loan.payload.response.MessageResponse;
 import com.krunal.loan.repository.BorrowerRepository;
-import com.krunal.loan.repository.BorrowersFileRepository;
 import com.krunal.loan.repository.UserStatusRepository;
 import com.krunal.loan.security.jwt.JwtUtils;
 import jakarta.transaction.Transactional;
@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.ParseException;
 import java.util.*;
 
 @CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
@@ -39,20 +40,18 @@ public class BorrowerController {
     private final JwtUtils jwtUtils;
     private final S3BucketUtils bucketUtils3;
     private final UserStatusRepository userStatusRepository;
-    private final BorrowersFileRepository borrowersFileRepository;
 
-    public BorrowerController(BorrowerRepository borrowerRepository, JwtUtils jwtUtils, S3BucketUtils bucketUtils3, UserStatusRepository userStatusRepository, BorrowersFileRepository borrowersFileRepository) {
+    public BorrowerController(BorrowerRepository borrowerRepository, JwtUtils jwtUtils, S3BucketUtils bucketUtils3, UserStatusRepository userStatusRepository) {
         this.borrowerRepository = borrowerRepository;
         this.jwtUtils = jwtUtils;
         this.bucketUtils3 = bucketUtils3;
         this.userStatusRepository = userStatusRepository;
-        this.borrowersFileRepository = borrowersFileRepository;
     }
 
     @PostMapping("/addborrower")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     @Transactional
-    public ResponseEntity<MessageResponse> registerBorrower(@Valid @RequestBody BorrowerRequest borrowerRequest) {
+    public ResponseEntity<MessageResponse> registerBorrower(@Valid @RequestBody BorrowerRequest borrowerRequest) throws ParseException {
         logger.info("Registering borrower with email: {}", borrowerRequest.getEmail());
 
         if (Boolean.TRUE.equals(borrowerRepository.existsByEmail(borrowerRequest.getEmail()))) {
@@ -116,7 +115,7 @@ public class BorrowerController {
 
     @PutMapping("/updateborrower/{id}")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
-    public ResponseEntity<MessageResponse> updateBorrower(@PathVariable Long id, @Valid @RequestBody BorrowerRequest borrowerRequest) {
+    public ResponseEntity<MessageResponse> updateBorrower(@PathVariable Long id, @Valid @RequestBody BorrowerRequest borrowerRequest) throws ParseException {
         logger.info("Updating borrower with ID: {}", id);
 
         Optional<Borrower> borrowerOptional = borrowerRepository.findById(id);
@@ -132,15 +131,19 @@ public class BorrowerController {
         borrower.setPhoneNo(borrowerRequest.getPhoneNo());
         borrower.setAddress(borrowerRequest.getAddress());
         borrower.setNotes(borrowerRequest.getNotes());
-        borrower.setDob(borrowerRequest.getDob());
-
-        Set<BorrowersFile> base64Images = getBorrowersFiles(id, borrowerRequest);
+        borrower.setDob(DateUtils.getDateFromString(borrowerRequest.getDob(), DateUtils.YMD));
 
         borrower.setStatus(1L); // 1 for active
         borrower.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
-        if (!base64Images.isEmpty()) {
-            borrower.setBorrowersFiles(base64Images);
-            borrowersFileRepository.deleteByBorrowerId(id);
+
+        if (!borrowerRequest.getBase64Image().isEmpty()) {
+            Set<BorrowersFile> base64Images = getBorrowersFiles(id, borrowerRequest);
+
+            if (!base64Images.isEmpty()) {
+                this.borrowerRepository.deleteBorrowersFilesByBorrowerId(id);
+                base64Images.forEach(borrower::addBorrowersFile);
+            }
+
         }
 
         borrowerRepository.save(borrower);
@@ -302,7 +305,7 @@ public class BorrowerController {
         return ResponseEntity.ok(borrowers);
     }
 
-    private Borrower getBorrower(BorrowerRequest borrowerRequest) {
+    private Borrower getBorrower(BorrowerRequest borrowerRequest) throws ParseException {
         Borrower borrower = new Borrower();
         borrower.setName(borrowerRequest.getName());
         borrower.setFatherName(borrowerRequest.getFatherName());
@@ -310,7 +313,7 @@ public class BorrowerController {
         borrower.setPhoneNo(borrowerRequest.getPhoneNo());
         borrower.setAddress(borrowerRequest.getAddress());
         borrower.setNotes(borrowerRequest.getNotes());
-        borrower.setDob(borrowerRequest.getDob());
+        borrower.setDob(DateUtils.getDateFromString(borrowerRequest.getDob(), DateUtils.YMD));
         return borrower;
     }
 }
