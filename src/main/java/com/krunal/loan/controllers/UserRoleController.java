@@ -6,7 +6,9 @@ import com.krunal.loan.models.ERole;
 import com.krunal.loan.models.Role;
 import com.krunal.loan.models.User;
 import com.krunal.loan.models.UserStatus;
+import com.krunal.loan.payload.request.ChangePasswordRequest;
 import com.krunal.loan.payload.request.UpdateRoleRequest;
+import com.krunal.loan.payload.response.MessageResponse;
 import com.krunal.loan.repository.RoleRepository;
 import com.krunal.loan.repository.UserRepository;
 import com.krunal.loan.repository.UserStatusRepository;
@@ -16,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
@@ -39,13 +42,15 @@ public class UserRoleController {
     private final UserRepository userRepository;
     private final UserStatusRepository userStatusRepository;
     private final S3BucketUtils bucketUtils3;
+    private final PasswordEncoder encoder;
 
     @Autowired
-    public UserRoleController(RoleRepository roleRepository, UserRepository userRepository, UserStatusRepository userStatusRepository, S3BucketUtils bucketUtils3) {
+    public UserRoleController(RoleRepository roleRepository, UserRepository userRepository, UserStatusRepository userStatusRepository, S3BucketUtils bucketUtils3, PasswordEncoder encoder) {
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
         this.userStatusRepository = userStatusRepository;
         this.bucketUtils3 = bucketUtils3;
+        this.encoder = encoder;
     }
 
     @GetMapping("/rolelist")
@@ -54,9 +59,7 @@ public class UserRoleController {
         logger.info("Fetching role list");
         try {
             List<Role> roles = this.roleRepository.findAll();
-            List<Role> activeRoles = roles.stream()
-                    .filter(role -> role.getStatus() == 1)
-                    .toList();
+            List<Role> activeRoles = roles.stream().filter(role -> role.getStatus() == 1).toList();
             return new ResponseEntity<>(activeRoles, HttpStatus.OK);
         } catch (Exception e) {
             logger.error("Error fetching role list", e);
@@ -69,20 +72,10 @@ public class UserRoleController {
     public ResponseEntity<List<User>> getUserList() {
         logger.info("Fetching user list");
         try {
-            List<User> users = this.userRepository.findAll().stream()
-                    .filter(user -> user.getStatus() != 0)
-                    .toList();
+            List<User> users = this.userRepository.findAll().stream().filter(user -> user.getStatus() != 0).toList();
             users.forEach(user -> {
-                UserStatus userStatus = this.userStatusRepository.findByIdAndStatusType(user.getStatus(),"USER")
-                        .orElseThrow(() -> new UserStatusNotFoundException(USER_STATUS_NOT_FOUND_ERROR));
+                UserStatus userStatus = this.userStatusRepository.findByIdAndStatusType(user.getStatus(), "USER").orElseThrow(() -> new UserStatusNotFoundException(USER_STATUS_NOT_FOUND_ERROR));
                 user.setStatusName(userStatus.getStatusName());
-                if (user.getFilePath() != null) {
-                    try {
-                        user.setBase64Image(this.bucketUtils3.getFileFromS3(user.getFilePath()));
-                    } catch (Exception e) {
-                        logger.error("Error fetching file from S3 for user: {}", user.getUsername(), e);
-                    }
-                }
             });
             return new ResponseEntity<>(users, HttpStatus.OK);
         } catch (Exception e) {
@@ -200,8 +193,7 @@ public class UserRoleController {
         Optional<User> userOptional = this.userRepository.findById(id);
         if (userOptional.isPresent()) {
             userOptional.ifPresent(user -> {
-                UserStatus userStatus = this.userStatusRepository.findByIdAndStatusType(user.getStatus(), "USER")
-                        .orElseThrow(() -> new UserStatusNotFoundException(USER_STATUS_NOT_FOUND_ERROR));
+                UserStatus userStatus = this.userStatusRepository.findByIdAndStatusType(user.getStatus(), "USER").orElseThrow(() -> new UserStatusNotFoundException(USER_STATUS_NOT_FOUND_ERROR));
                 user.setStatusName(userStatus.getStatusName());
                 if (user.getFilePath() != null) {
                     try {
@@ -214,6 +206,34 @@ public class UserRoleController {
             return new ResponseEntity<>(userOptional.get(), HttpStatus.OK);
         } else {
             logger.warn(USER_NOT_FOUND_WITH_ID, id);
+            throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
+        }
+    }
+
+    @PutMapping("/changepassword")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<MessageResponse> changePassword( @RequestBody ChangePasswordRequest changePassword) {
+        logger.info("Changing password for user with ID: {}", changePassword.getId());
+
+        if (changePassword.getNewPassword().length() < 6) {
+            logger.warn("Password for username {} is too short!", changePassword.getId());
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: Password must be at least 6 characters!"));
+        }
+
+        try {
+            Optional<User> userOptional = this.userRepository.findById(changePassword.getId());
+            if (userOptional.isPresent()) {
+                User user = userOptional.get();
+
+                user.setPassword(encoder.encode(changePassword.getNewPassword()));
+                this.userRepository.save(user);
+                return ResponseEntity.ok(new MessageResponse("Password changed successfully!"));
+            } else {
+                logger.warn(USER_NOT_FOUND_WITH_ID, changePassword.getId());
+                throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
+            }
+        } catch (Exception e) {
+            logger.error("Error changing password for user with ID: {}", changePassword.getId(), e);
             throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
         }
     }

@@ -15,7 +15,6 @@ public class UpdateRoleRequest {
 	@Size(min = 3, max = 20)
 	private String username;
 
-	@NotBlank
 	@Size(max = 50)
 	@Email
 	private String email;
@@ -30,7 +29,7 @@ public class UpdateRoleRequest {
 	private String base64Image;
 
 	public UpdateRoleRequest(@NotBlank @Size(min = 3, max = 20) String username,
-			@NotBlank @Size(max = 50) @Email String email, @NotBlank @Size(min = 3, max = 20) String role, @Size(max = 15) String phoneNo) {
+			 @Size(max = 50) @Email String email, @NotBlank @Size(min = 3, max = 20) String role, @Size(max = 15) String phoneNo) {
 		super();
 		this.username = username;
 		this.email = email;
