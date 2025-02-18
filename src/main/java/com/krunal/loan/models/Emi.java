@@ -39,6 +39,8 @@ public class Emi {
     private Double emiReceived;
 
     @NotNull
+    private Double remainingAmount;
+
     private Long paymentMode;
 
     @Transient
