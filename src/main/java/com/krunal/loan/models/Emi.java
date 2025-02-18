@@ -1,9 +1,9 @@
 package com.krunal.loan.models;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,13 +23,13 @@ public class Emi {
     private Long emiId;
 
     @NotNull
-    @Column(name = "loan_id", nullable = false)
+    @Column(name = "loan_id", nullable = true)
     private Long loanId;
 
     @NotNull
     private Integer emiNo;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private Date emiDate;
 
     @NotNull
@@ -44,19 +44,13 @@ public class Emi {
     @Transient
     private String paymentModeName;
 
-    @Column(nullable = false)
+    @NotNull
     private Long status;
 
     @Transient
     private String statusName;
 
-    @Size(max = 500)
-    private String filePath;
-
-    @Transient
-    private String base64Image;
-
-    @Size(max = 300)
+    @Column(length = 300)
     private String notes;
 
     @Column(nullable = false)
@@ -71,7 +65,6 @@ public class Emi {
     private Long emiReceivedUser;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Kolkata")
-    @UpdateTimestamp
     @Temporal(TemporalType.TIMESTAMP)
     private Date emiReceivedDate;
 
@@ -82,5 +75,6 @@ public class Emi {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "loan_id", insertable = false, updatable = false)
+    @JsonIgnore
     private Loan loan;
 }

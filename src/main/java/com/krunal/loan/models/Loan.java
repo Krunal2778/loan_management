@@ -1,17 +1,14 @@
 package com.krunal.loan.models;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 @Entity
 @Table(name = "loans",
@@ -21,10 +18,11 @@ import java.util.Set;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString
 public class Loan {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long loanId;
+    private Long id;
 
     @NotNull
     private Long borrowerId;
@@ -42,11 +40,20 @@ public class Loan {
     @NotNull
     private Double loanAmount;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private Date emiStartDate;
+
+    @NotNull
+    private Double empPerMonth;
+
     @NotNull
     private Double expectedProfit;
 
     @Column(nullable = false)
     private Long status;
+
+    @Column(length = 300)
+    private String notes;
 
     @Transient
     private String statusName;
@@ -74,8 +81,10 @@ public class Loan {
     private Date updatedDate;
 
     @OneToMany(mappedBy = "loan", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<LoanContributor> loanContributors = new HashSet<>();
+    @JsonManagedReference
+    private List<LoanContributor> loanContributors;
 
     @OneToMany(mappedBy = "loan", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Emi> emis = new HashSet<>();
+    @JsonManagedReference
+    private List<Emi> emis ;
 }
