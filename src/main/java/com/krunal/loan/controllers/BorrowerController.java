@@ -48,7 +48,7 @@ public class BorrowerController {
         this.userStatusRepository = userStatusRepository;
     }
 
-    @PostMapping("/addborrower")
+    @PostMapping("/add-borrower")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<MessageResponse> registerBorrower(@Valid @RequestBody BorrowerRequest borrowerRequest) throws ParseException {
@@ -113,7 +113,7 @@ public class BorrowerController {
         return ResponseEntity.ok(new MessageResponse("Borrower registered successfully!"));
     }
 
-    @PutMapping("/updateborrower/{id}")
+    @PutMapping("/update-borrower/{id}")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<MessageResponse> updateBorrower(@PathVariable Long id, @Valid @RequestBody BorrowerRequest borrowerRequest) throws ParseException {
         logger.info("Updating borrower with ID: {}", id);
@@ -203,7 +203,7 @@ public class BorrowerController {
 
     }
 
-    @GetMapping("/borrowerlist")
+    @GetMapping("/borrower-list")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<Borrower>> getAllBorrowers() {
         logger.info("Fetching all borrowers");
@@ -217,7 +217,7 @@ public class BorrowerController {
     }
 
 
-    @GetMapping("/defaulterslist")
+    @GetMapping("/defaulters-list")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<Borrower>> getDefaulterBorrowers() {
         logger.info("Fetching all borrowers with defaulter status");

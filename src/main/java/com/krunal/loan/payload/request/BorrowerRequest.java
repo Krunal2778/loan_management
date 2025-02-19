@@ -2,6 +2,7 @@ package com.krunal.loan.payload.request;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,7 +10,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
-import java.util.Date;
 import java.util.Set;
 
 @Getter
@@ -17,26 +17,30 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 public class BorrowerRequest implements Serializable {
-    @Size(max = 50)
+    @NotNull(message = "Name is required")
+    @Size(max = 50, message = "Name must be at most 50 characters")
     private String name;
 
-    @Size(max = 50)
+    @Size(max = 50, message = "Father's name must be at most 50 characters")
     private String fatherName;
 
-    @Size(max = 50)
-    @Email
+    @NotNull(message = "Email is required")
+    @Size(max = 50, message = "Email must be at most 50 characters")
+    @Email(message = "Email should be valid")
     private String email;
 
-    @Size(min = 10, max = 15)
+    @NotNull(message = "Phone number is required")
+    @Size(min = 10, max = 15, message = "Phone number must be between 10 and 15 characters")
     private String phoneNo;
 
-    @Size(max = 300)
+    @Size(max = 300, message = "Address must be at most 300 characters")
     private String address;
 
+    @NotNull(message = "Date of birth is required")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
     private String dob;
 
-    @Size(max = 300)
+    @Size(max = 300, message = "Notes must be at most 300 characters")
     private String notes;
 
     private Set<String> base64Image;

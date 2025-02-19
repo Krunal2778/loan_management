@@ -15,19 +15,14 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 public class EmiScheduleRequest {
-    @Positive(message = "Loan amount must be greater than 0")
     private double loanAmount;
 
-    @Positive(message = "Interest rate must be greater than 0")
     private double interestRate;
 
-    @Positive(message = "Number of EMIs must be greater than 0")
     private int numberOfEmis;
 
-    @FutureOrPresent(message = "EMI date must be in the present or future")
     private Date firstEmiDate;
 
-    @NotNull(message = "Loan ID must not be null")
     private Long loanId;
 
 

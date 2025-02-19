@@ -35,7 +35,7 @@ public class LoanController {
         this.jwtUtils = jwtUtils;
     }
 
-    @PostMapping("/createloanaccount")
+    @PostMapping("/create-loan-account")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<MessageResponse> createLoanAccount(@Valid @RequestBody CreateLoanAccountRequest loanAccountRequest) throws ParseException {
@@ -59,7 +59,7 @@ public class LoanController {
         return ResponseEntity.ok(new MessageResponse("Loan account created successfully!"));
     }
 
-    @PutMapping("/updateloanaccount/{loanId}")
+    @PutMapping("/update-loan-account/{loanId}")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<MessageResponse> updateLoanAccount(@PathVariable Long loanId, @Valid @RequestBody UpdateLoanAccountRequest loanAccountRequest) throws ParseException {
@@ -128,7 +128,7 @@ public class LoanController {
         return ResponseEntity.ok(loan);
     }
 
-    @GetMapping("/loanlist")
+    @GetMapping("/loan-list")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<Loan>> getAllLoans() {
         logger.info("Fetching all loans");
