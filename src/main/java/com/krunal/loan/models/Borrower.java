@@ -46,7 +46,7 @@ public class Borrower  {
 	private String address;
 
 	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")  // 💡 Fix
-	private Date dob;
+	private LocalDate dob;
 
 	@Size(max = 300)
 	private String notes;

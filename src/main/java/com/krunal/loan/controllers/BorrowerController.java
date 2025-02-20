@@ -133,7 +133,7 @@ public class BorrowerController {
         borrower.setNotes(borrowerRequest.getNotes());
         borrower.setDob(DateUtils.getDateFromString(borrowerRequest.getDob(), DateUtils.YMD));
 
-        borrower.setStatus(1L); // 1 for active
+       // borrower.setStatus(1L); // 1 for active
         borrower.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
 
         if (!borrowerRequest.getBase64Image().isEmpty()) {
@@ -247,7 +247,7 @@ public class BorrowerController {
         borrower.setStatus(0L); // 0 for Suspended
         borrower.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
 
-        borrowerRepository.save(borrower);
+        borrowerRepository.updateStatusByBorrowerId(id, borrower.getStatus(), borrower.getUpdatedUser());
         logger.info("Borrower with ID {} disapproved successfully", id);
 
         return ResponseEntity.ok(new MessageResponse("Borrower approved successfully!"));
@@ -285,7 +285,7 @@ public class BorrowerController {
         borrower.setStatus(3L); // 3 for defaulter
         borrower.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
 
-        borrowerRepository.save(borrower);
+        borrowerRepository.updateStatusByBorrowerId(id, borrower.getStatus(), borrower.getUpdatedUser());
         logger.info("Borrower with ID {} marked as defaulter successfully", id);
 
         return ResponseEntity.ok(new MessageResponse("Borrower marked as defaulter successfully!"));

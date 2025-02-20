@@ -8,6 +8,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.util.*;
 
 @Entity
@@ -41,7 +42,7 @@ public class Loan {
     private Double loanAmount;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    private Date emiStartDate;
+    private LocalDate emiStartDate;
 
     @NotNull
     private Double empPerMonth;

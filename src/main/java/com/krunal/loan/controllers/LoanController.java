@@ -5,10 +5,12 @@ import com.krunal.loan.models.Loan;
 import com.krunal.loan.models.LoanContributor;
 import com.krunal.loan.payload.request.ContributorRequest;
 import com.krunal.loan.payload.request.CreateLoanAccountRequest;
+import com.krunal.loan.payload.request.EmiScheduleRequest;
 import com.krunal.loan.payload.request.UpdateLoanAccountRequest;
 import com.krunal.loan.payload.response.MessageResponse;
 import com.krunal.loan.repository.LoanRepository;
 import com.krunal.loan.security.jwt.JwtUtils;
+import com.krunal.loan.service.impl.EmiService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,8 +18,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-
-import java.text.ParseException;
 import java.util.*;
 
 @CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
@@ -27,18 +27,21 @@ public class LoanController {
 
     private static final Logger logger = LoggerFactory.getLogger(LoanController.class);
     private static final String LOAN_NOT_FOUND = "Loan not found with ID: %d";
+    private static final String LOAN_STATUS_NOT_PENDING = "Loan status can only be updated when the status is pending for ID: %d";
     private final LoanRepository loanRepository;
     private final JwtUtils jwtUtils;
+    private final EmiService emiService;
 
-    public LoanController(LoanRepository loanRepository, JwtUtils jwtUtils) {
+    public LoanController(LoanRepository loanRepository, JwtUtils jwtUtils, EmiService emiService) {
         this.loanRepository = loanRepository;
         this.jwtUtils = jwtUtils;
+        this.emiService = emiService;
     }
 
     @PostMapping("/create-loan-account")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     @Transactional
-    public ResponseEntity<MessageResponse> createLoanAccount(@Valid @RequestBody CreateLoanAccountRequest loanAccountRequest) throws ParseException {
+    public ResponseEntity<MessageResponse> createLoanAccount(@Valid @RequestBody CreateLoanAccountRequest loanAccountRequest) {
         logger.info("Creating loan account for borrower ID: {}", loanAccountRequest.getBorrowerId());
 
         // Create loan account
@@ -62,13 +65,16 @@ public class LoanController {
     @PutMapping("/update-loan-account/{loanId}")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     @Transactional
-    public ResponseEntity<MessageResponse> updateLoanAccount(@PathVariable Long loanId, @Valid @RequestBody UpdateLoanAccountRequest loanAccountRequest) throws ParseException {
+    public ResponseEntity<MessageResponse> updateLoanAccount(@PathVariable Long loanId, @Valid @RequestBody UpdateLoanAccountRequest loanAccountRequest) {
         logger.info("Updating loan account for loan ID: {}", loanId);
 
         // Find existing loan account
         Loan existingLoan = loanRepository.findById(loanId).orElse(null);
         if (existingLoan == null) {
             return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_NOT_FOUND, loanId)));
+        }
+        if (existingLoan.getStatus() !=2) {
+            return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_STATUS_NOT_PENDING, loanId)));
         }
         // Update loan account details
         existingLoan.setLoanDuration(loanAccountRequest.getLoanDuration());
@@ -147,7 +153,9 @@ public class LoanController {
             logger.warn(message);
             return ResponseEntity.badRequest().body(new MessageResponse(message));
         }
-
+        if (loanOptional.get().getStatus() !=2) {
+            return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_STATUS_NOT_PENDING, loanId)));
+        }
         loanRepository.deleteById(loanId);
         logger.info("Loan account with ID {} deleted successfully", loanId);
 
@@ -164,10 +172,20 @@ public class LoanController {
         if (loan == null) {
             return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_NOT_FOUND, loanId)));
         }
-
+        if (loan.getStatus() !=2) {
+            return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_STATUS_NOT_PENDING, loanId)));
+        }
         loan.setStatus(1L); // 1 for approved
         loan.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
-        loanRepository.save(loan);
+
+        EmiScheduleRequest scheduleRequest = new EmiScheduleRequest();
+        scheduleRequest.setLoanId(loan.getId());
+        scheduleRequest.setLoanAmount(loan.getLoanAmount());
+        scheduleRequest.setInterestRate(loan.getInterestRate());
+        scheduleRequest.setNumberOfEmis(loan.getLoanDuration());
+        scheduleRequest.setFirstEmiDate(loan.getEmiStartDate());
+        emiService.generateEmiSchedule(scheduleRequest);
+        loanRepository.updateStatusByLoanId(loan.getId(),loan.getStatus(), loan.getUpdatedUser());
 
         logger.info("Loan account with ID {} approved successfully", loanId);
         return ResponseEntity.ok(new MessageResponse("Loan account approved successfully!"));
@@ -183,10 +201,12 @@ public class LoanController {
         if (loan == null) {
             return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_NOT_FOUND, loanId)));
         }
-
+        if (loan.getStatus() !=2) {
+            return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_STATUS_NOT_PENDING, loanId)));
+        }
         loan.setStatus(3L); // 3 for rejected
         loan.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
-        loanRepository.save(loan);
+        loanRepository.updateStatusByLoanId(loan.getId(),loan.getStatus(), loan.getUpdatedUser());
 
         logger.info("Loan account with ID {} rejected successfully", loanId);
         return ResponseEntity.ok(new MessageResponse("Loan account rejected successfully!"));
@@ -209,7 +229,7 @@ public class LoanController {
     }
 
     // Method to map CreateLoanAccountRequest to Loan
-    private Loan getLoan(CreateLoanAccountRequest loanAccountRequest) throws ParseException {
+    private Loan getLoan(CreateLoanAccountRequest loanAccountRequest) {
         logger.info("Mapping loan account request for borrower ID: {}", loanAccountRequest.getBorrowerId());
         Loan loan = new Loan();
         loan.setBorrowerId(loanAccountRequest.getBorrowerId());

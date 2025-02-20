@@ -1,14 +1,11 @@
 package com.krunal.loan.payload.request;
 
-import jakarta.validation.constraints.FutureOrPresent;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Date;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -21,7 +18,7 @@ public class EmiScheduleRequest {
 
     private int numberOfEmis;
 
-    private Date firstEmiDate;
+    private LocalDate firstEmiDate;
 
     private Long loanId;
 

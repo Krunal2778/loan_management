@@ -7,6 +7,9 @@ package com.krunal.loan.common;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
@@ -299,15 +302,21 @@ public class DateUtils {
     /**
      * Parse the String and return the Date object
      *
-     * @param date String that you want to parse
+     * @param date   String that you want to parse
      * @param format Format that the date was passed in
      * @return Returns the Date object after parsing
      * @throws ParseException Throws ParseException if the date is not in the
-     * correct format indicated.
+     *                        correct format indicated.
      */
-    public static Date getDateFromString(String date, String format) throws ParseException {
-        SimpleDateFormat df = new SimpleDateFormat(format);
-        return df.parse(date);
+//    public static Date getDateFromString(String date, String format) throws ParseException {
+//        SimpleDateFormat df = new SimpleDateFormat(format);
+//        return df.parse(date);
+//    }
+
+
+    public static LocalDate getDateFromString(String date, String format) throws DateTimeParseException {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
+        return LocalDate.parse(date, formatter);
     }
 
     /**
@@ -525,16 +534,16 @@ public class DateUtils {
      * @throws ParseException Throws ParseException if the date passed is not in
      * correct format.
      */
-    public static String getStartOfMonthVariable(String dStr) throws ParseException {
-        Calendar c1 = Calendar.getInstance();
-        Date d = getDateFromString(dStr, YMD);
-        c1.setTime(d);
-        c1.set(Calendar.DATE, 1);
-        c1.set(Calendar.HOUR_OF_DAY, 0);
-        c1.set(Calendar.MINUTE, 0);
-        c1.set(Calendar.SECOND, 0);
-        return new SimpleDateFormat(YMD).format(c1.getTime());
-    }
+//    public static String getStartOfMonthVariable(String dStr) throws ParseException {
+//        Calendar c1 = Calendar.getInstance();
+//        Date d = getDateFromString(dStr, YMD);
+//        c1.setTime(d);
+//        c1.set(Calendar.DATE, 1);
+//        c1.set(Calendar.HOUR_OF_DAY, 0);
+//        c1.set(Calendar.MINUTE, 0);
+//        c1.set(Calendar.SECOND, 0);
+//        return new SimpleDateFormat(YMD).format(c1.getTime());
+//    }
 
     /**
      * Get the Date object corresponding to last date of the month for date that
@@ -547,18 +556,18 @@ public class DateUtils {
      * @throws ParseException Throws ParseException if the date passed is not in
      * correct format.
      */
-    public static String getEndOfMonthVariable(String dStr) throws ParseException {
-        Calendar c1 = Calendar.getInstance();
-        Date d = getDateFromString(dStr, YMD);
-        c1.setTime(d);
-        c1.add(Calendar.MONTH, 1);
-        c1.set(Calendar.DATE, 1);
-        c1.add(Calendar.DATE, -1);
-        c1.set(Calendar.HOUR_OF_DAY, 23);
-        c1.set(Calendar.MINUTE, 59);
-        c1.set(Calendar.SECOND, 59);
-        return new SimpleDateFormat(YMD).format(c1.getTime());
-    }
+//    public static String getEndOfMonthVariable(String dStr) throws ParseException {
+//        Calendar c1 = Calendar.getInstance();
+//        Date d = getDateFromString(dStr, YMD);
+//        c1.setTime(d);
+//        c1.add(Calendar.MONTH, 1);
+//        c1.set(Calendar.DATE, 1);
+//        c1.add(Calendar.DATE, -1);
+//        c1.set(Calendar.HOUR_OF_DAY, 23);
+//        c1.set(Calendar.MINUTE, 59);
+//        c1.set(Calendar.SECOND, 59);
+//        return new SimpleDateFormat(YMD).format(c1.getTime());
+//    }
 
     /**
      * Gives Version of Utils

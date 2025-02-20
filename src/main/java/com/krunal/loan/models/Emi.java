@@ -4,12 +4,14 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.LocalDate;
 import java.util.Date;
 
 @Entity
@@ -30,7 +32,7 @@ public class Emi {
     private Integer emiNo;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    private Date emiDate;
+    private LocalDate emiDate;
 
     @NotNull
     private Double emiAmount;
@@ -66,9 +68,16 @@ public class Emi {
 
     private Long emiReceivedUser;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Kolkata")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date emiReceivedDate;
+    @Size(max = 500)
+    private String filePath;
+
+    @Transient
+    private String base64Image;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate emiReceivedDate;
+
+    private Long updatedUser;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Kolkata")
     @UpdateTimestamp

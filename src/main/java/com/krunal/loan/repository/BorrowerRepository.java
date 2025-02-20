@@ -21,4 +21,10 @@ public interface BorrowerRepository extends JpaRepository<Borrower, Long> {
     @Modifying
     @Query("DELETE FROM BorrowersFile bf WHERE bf.borrower.borrowerId = :borrowerId")
     void deleteBorrowersFilesByBorrowerId(@Param("borrowerId") Long borrowerId);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Borrower l SET l.status = :status, l.updatedUser = :updatedUser WHERE l.id = :borrowerId")
+    void updateStatusByBorrowerId(@Param("borrowerId") Long borrowerId, @Param("status") Long status, @Param("updatedUser") Long updatedUser);
+
 }
