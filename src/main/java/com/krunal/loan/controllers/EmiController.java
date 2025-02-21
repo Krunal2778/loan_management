@@ -1,6 +1,7 @@
 package com.krunal.loan.controllers;
 
 import com.krunal.loan.common.DateUtils;
+import com.krunal.loan.common.S3BucketUtils;
 import com.krunal.loan.exception.LoanCustomException;
 import com.krunal.loan.models.Emi;
 import com.krunal.loan.payload.request.CalculateContributionReq;
@@ -28,10 +29,12 @@ public class EmiController {
     private static final Logger logger = LoggerFactory.getLogger(EmiController.class);
 
     private final EmiService emiService;
+    private final S3BucketUtils bucketUtils;
 
     @Autowired
-    public EmiController(EmiService emiService) {
+    public EmiController(EmiService emiService, S3BucketUtils bucketUtils) {
         this.emiService = emiService;
+        this.bucketUtils = bucketUtils;
     }
 
     @PostMapping("/calculate")
@@ -98,6 +101,9 @@ public class EmiController {
         logger.info("Received request to get EMI by ID: {}", id);
         try {
             Emi emi = emiService.getEmiById(id);
+            if (emi.getFilePath() != null) {
+                emi.setBase64Image(this.bucketUtils.getFileFromS3(emi.getFilePath()));
+            }
             logger.info("EMI found with ID: {}", id);
             return ResponseEntity.ok(emi);
         } catch (LoanCustomException e) {

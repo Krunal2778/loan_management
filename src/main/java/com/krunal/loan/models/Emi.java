@@ -74,6 +74,12 @@ public class Emi {
     @Transient
     private String base64Image;
 
+    @Transient
+    private String addUserName;
+
+    @Transient
+    private String updateUserName;
+
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate emiReceivedDate;
 
