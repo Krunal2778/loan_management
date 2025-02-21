@@ -153,7 +153,7 @@ public class AuthController {
         user.setPartnerId("TEMP");
         user.setRoles(roles);
         user = userRepository.save(user);
-        user.setPartnerId(String.format("LN-%07d", user.getId()));
+        user.setPartnerId(String.format("PN-%07d", user.getId()));
         userRepository.updatePartnerIdById(user.getId(), user.getPartnerId());
         logger.info("User registered successfully with username: {}", signUpRequest.getUsername());
 
