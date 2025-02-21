@@ -9,6 +9,7 @@ import com.krunal.loan.payload.response.MessageResponse;
 import com.krunal.loan.repository.RoleRepository;
 import com.krunal.loan.repository.UserRepository;
 import com.krunal.loan.repository.UserStatusRepository;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,6 +80,7 @@ public class UserRoleController {
 
     @PutMapping("/update-user")
     @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
     public ResponseEntity<User> updateUser(@Valid @RequestBody UpdateRoleRequest user) {
         logger.info("Updating user with username: {}", user.getUsername());
         try {
@@ -88,6 +90,7 @@ public class UserRoleController {
                 users.setEmail(user.getEmail());
                 users.setPhoneNo(user.getPhoneNo());
                 users.setStatus(user.getStatus());
+                users.setName(user.getName());
                 String filePath = null;
                 if (user.getBase64Image() != null) {
                     filePath = bucketUtils3.uploadImageToS3Bucket(user.getBase64Image());

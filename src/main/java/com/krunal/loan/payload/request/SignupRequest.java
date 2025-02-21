@@ -13,8 +13,11 @@ import java.util.Set;
 @NoArgsConstructor
 public class SignupRequest {
     @NotBlank(message = "Username is required")
-    @Size(min = 3, max = 20, message = "Username must be between 3 and 20 characters")
+    @Size(min = 6, max = 20, message = "Username must be between 6 and 20 characters")
     private String username;
+
+    @Size(max = 50, message = "Name must be at most 50 characters")
+    private String name;
 
     @Size(max = 50, message = "Email must be at most 50 characters")
     @Email(message = "Email should be valid")
@@ -29,5 +32,6 @@ public class SignupRequest {
     @Size(min = 10, max = 15, message = "Phone number must be between 10 and 15 characters")
     private String phoneNo;
 
+    @NotBlank(message = "Signature is required")
     private String base64Image;
 }

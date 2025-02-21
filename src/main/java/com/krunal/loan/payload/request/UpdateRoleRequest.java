@@ -12,14 +12,16 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UpdateRoleRequest {
 	@NotBlank
-	@Size(min = 3, max = 20)
+	@Size(min = 6, max = 20)
 	private String username;
+
+	@Size(max = 50, message = "Name must be at most 50 characters")
+	private String name;
 
 	@Size(max = 50)
 	@Email
 	private String email;
 
-	@NotBlank
 	@Size(min = 3, max = 20)
 	private String role;
 
@@ -30,13 +32,14 @@ public class UpdateRoleRequest {
 
 	private Long status;
 
-	public UpdateRoleRequest(@NotBlank @Size(min = 3, max = 20) String username,
-			 @Size(max = 50) @Email String email, @NotBlank @Size(min = 3, max = 20) String role, @Size(max = 15) String phoneNo) {
+	public UpdateRoleRequest(@NotBlank @Size(min = 6, max = 20) String username,
+			 @Size(max = 50) @Email String email, @NotBlank @Size(min = 3, max = 20) String role, @Size(max = 15) String phoneNo, String name) {
 		super();
 		this.username = username;
 		this.email = email;
 		this.role = role;
 		this.phoneNo = phoneNo;
+		this.name = name;
 	}
 
 }

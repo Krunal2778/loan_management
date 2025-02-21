@@ -32,6 +32,9 @@ public class User {
 	private String username;
 
 	@Size(max = 50)
+	private String name;
+
+	@Size(max = 50)
 	@Email
 	private String email;
 
@@ -54,6 +57,9 @@ public class User {
 	@Transient
 	private String base64Image;
 
+	@Size(max = 10)
+	private String partnerId;
+
 	@Column(nullable = false)
 	private Long addUser;
 
@@ -68,7 +74,7 @@ public class User {
 			inverseJoinColumns = @JoinColumn(name = "role_id"))
 	private Set<Role> roles = new HashSet<>();
 
-	public User(String username, String email, String password, String phoneNo,String filePath) {
+	public User(String username, String email, String password, String phoneNo,String filePath, String name) {
 		this.username = username;
 		this.email = email;
 		this.password = password;
@@ -76,6 +82,7 @@ public class User {
 		this.status = UsersStatus.ACTIVE.getCode();
 		this.addDate = new Date();
 		this.filePath = filePath;
+		this.name =name;
 	}
 	public String getStatusName() {
 		UsersStatus usersStatus = UsersStatus.fromCode(this.status);

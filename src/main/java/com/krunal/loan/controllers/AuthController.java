@@ -27,6 +27,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
@@ -89,6 +90,7 @@ public class AuthController {
 
     @PostMapping("/adduser")
     @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
     public ResponseEntity<MessageResponse> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
         logger.info("Registering user with username: {}", signUpRequest.getUsername());
 
@@ -117,7 +119,7 @@ public class AuthController {
 
         // Create new user's account
         User user = new User(signUpRequest.getUsername(), signUpRequest.getEmail(),
-                encoder.encode(signUpRequest.getPassword()), signUpRequest.getPhoneNo(), filePath);
+                encoder.encode(signUpRequest.getPassword()), signUpRequest.getPhoneNo(), filePath, signUpRequest.getName());
         user.setAddUser(jwtUtils.getLoggedInUserDetails().getId());
         Set<String> strRoles = signUpRequest.getRole();
         Set<Role> roles = new HashSet<>();
@@ -148,10 +150,11 @@ public class AuthController {
                 }
             });
         }
-
+        user.setPartnerId("TEMP");
         user.setRoles(roles);
-        userRepository.save(user);
-
+        user = userRepository.save(user);
+        user.setPartnerId(String.format("LN-%07d", user.getId()));
+        userRepository.updatePartnerIdById(user.getId(), user.getPartnerId());
         logger.info("User registered successfully with username: {}", signUpRequest.getUsername());
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
