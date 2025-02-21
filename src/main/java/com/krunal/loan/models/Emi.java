@@ -38,7 +38,7 @@ public class Emi {
     private Double emiAmount;
 
     @NotNull
-    private Double emiReceived;
+    private Double emiReceivedAmount;
 
     @NotNull
     private Double remainingAmount;
@@ -66,7 +66,7 @@ public class Emi {
     @Column(updatable = false)
     private Date addDate;
 
-    private Long emiReceivedUser;
+    private String receiverName;
 
     @Size(max = 500)
     private String filePath;
@@ -88,4 +88,14 @@ public class Emi {
     @JoinColumn(name = "loan_id", insertable = false, updatable = false)
     @JsonIgnore
     private Loan loan;
+
+    public String getPaymentModeName() {
+        PaymentType type = PaymentType.fromCode(this.paymentMode);
+        return (type != null) ? type.getDisplayName() : "Unknown";
+    }
+
+    public String getStatusName() {
+       EmiStatus emiStatus = EmiStatus.fromCode(this.status);
+        return (emiStatus != null) ? emiStatus.getDisplayName() : "Unknown";
+    }
 }

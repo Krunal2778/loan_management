@@ -3,6 +3,7 @@ package com.krunal.loan.controllers;
 import com.krunal.loan.common.DateUtils;
 import com.krunal.loan.models.Loan;
 import com.krunal.loan.models.LoanContributor;
+import com.krunal.loan.models.LoanStatus;
 import com.krunal.loan.payload.request.ContributorRequest;
 import com.krunal.loan.payload.request.CreateLoanAccountRequest;
 import com.krunal.loan.payload.request.EmiScheduleRequest;
@@ -47,7 +48,7 @@ public class LoanController {
         // Create loan account
         Loan loan = getLoan(loanAccountRequest);
         loan.setLoanAccount("TEMP");
-        loan.setStatus(2L); // 2 for pending
+        loan.setStatus(LoanStatus.PENDING.getCode()); // 2 for pending
         loan.setAddUser(jwtUtils.getLoggedInUserDetails().getId());
         loan = loanRepository.save(loan);
         logger.info("Loan account created with temporary ID: {}", loan.getId());
@@ -73,7 +74,7 @@ public class LoanController {
         if (existingLoan == null) {
             return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_NOT_FOUND, loanId)));
         }
-        if (existingLoan.getStatus() !=2) {
+        if (!Objects.equals(existingLoan.getStatus(), LoanStatus.PENDING.getCode())) {
             return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_STATUS_NOT_PENDING, loanId)));
         }
         // Update loan account details
@@ -153,7 +154,7 @@ public class LoanController {
             logger.warn(message);
             return ResponseEntity.badRequest().body(new MessageResponse(message));
         }
-        if (loanOptional.get().getStatus() !=2) {
+        if (!Objects.equals(loanOptional.get().getStatus(), LoanStatus.PENDING.getCode())) {
             return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_STATUS_NOT_PENDING, loanId)));
         }
         loanRepository.deleteById(loanId);
@@ -172,10 +173,10 @@ public class LoanController {
         if (loan == null) {
             return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_NOT_FOUND, loanId)));
         }
-        if (loan.getStatus() !=2) {
+        if (loan.getStatus() !=LoanStatus.PENDING.getCode()) {
             return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_STATUS_NOT_PENDING, loanId)));
         }
-        loan.setStatus(1L); // 1 for approved
+        loan.setStatus(LoanStatus.APPROVED.getCode()); // 1 for approved
         loan.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
 
         EmiScheduleRequest scheduleRequest = new EmiScheduleRequest();
@@ -201,10 +202,10 @@ public class LoanController {
         if (loan == null) {
             return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_NOT_FOUND, loanId)));
         }
-        if (loan.getStatus() !=2) {
+        if (!Objects.equals(loan.getStatus(), LoanStatus.PENDING.getCode())) {
             return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_STATUS_NOT_PENDING, loanId)));
         }
-        loan.setStatus(3L); // 3 for rejected
+        loan.setStatus(LoanStatus.REJECTED.getCode()); // 3 for rejected
         loan.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
         loanRepository.updateStatusByLoanId(loan.getId(),loan.getStatus(), loan.getUpdatedUser());
 

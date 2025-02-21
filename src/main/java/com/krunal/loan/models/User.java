@@ -73,8 +73,12 @@ public class User {
 		this.email = email;
 		this.password = password;
 		this.phoneNo = phoneNo;
-		this.status = 1L;
+		this.status = UsersStatus.ACTIVE.getCode();
 		this.addDate = new Date();
 		this.filePath = filePath;
+	}
+	public String getStatusName() {
+		UsersStatus usersStatus = UsersStatus.fromCode(this.status);
+		return (usersStatus != null) ? usersStatus.getDisplayName() : "Unknown";
 	}
 }

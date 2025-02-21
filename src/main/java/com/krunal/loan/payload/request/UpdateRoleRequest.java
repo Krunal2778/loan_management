@@ -28,6 +28,8 @@ public class UpdateRoleRequest {
 
 	private String base64Image;
 
+	private Long status;
+
 	public UpdateRoleRequest(@NotBlank @Size(min = 3, max = 20) String username,
 			 @Size(max = 50) @Email String email, @NotBlank @Size(min = 3, max = 20) String role, @Size(max = 15) String phoneNo) {
 		super();

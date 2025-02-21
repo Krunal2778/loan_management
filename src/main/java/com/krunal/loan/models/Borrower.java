@@ -85,4 +85,9 @@ public class Borrower  {
 		borrowersFiles.remove(borrowersFile);
 		borrowersFile.setBorrower(null);
 	}
+
+	public String getStatusName() {
+		BorrowerStatus borrowerStatus = BorrowerStatus.fromCode(this.status);
+		return (borrowerStatus != null) ? borrowerStatus.getDisplayName() : "Unknown";
+	}
 }

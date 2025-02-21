@@ -16,7 +16,7 @@ import java.time.LocalDate;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class ReceivedPaymentReq {
+public class EmiUpdateReq {
 
     @NotNull(message = "EMI ID is required")
     private Long emiId;
@@ -36,8 +36,9 @@ public class ReceivedPaymentReq {
 
     private String base64Image;
 
-    private Long paymentReceivedUser;
+    private String receiverName;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
     private String emiDate;
 
     @NotNull(message = "Payment received date is required")

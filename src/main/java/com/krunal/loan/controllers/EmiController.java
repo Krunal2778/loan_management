@@ -5,7 +5,7 @@ import com.krunal.loan.exception.LoanCustomException;
 import com.krunal.loan.models.Emi;
 import com.krunal.loan.payload.request.CalculateContributionReq;
 import com.krunal.loan.payload.request.EmiCalculationRequest;
-import com.krunal.loan.payload.request.ReceivedPaymentReq;
+import com.krunal.loan.payload.request.EmiUpdateReq;
 import com.krunal.loan.payload.response.ContributionResponse;
 import com.krunal.loan.payload.response.EmiCalculationResponse;
 import com.krunal.loan.service.impl.EmiService;
@@ -109,8 +109,8 @@ public class EmiController {
         }
     }
 
-    @PostMapping("/received-emi")
-    public ResponseEntity<String> receivePayment(@Valid @RequestBody ReceivedPaymentReq receivedPaymentReq) {
+    @PostMapping("/update-emi")
+    public ResponseEntity<String> receivePayment(@Valid @RequestBody EmiUpdateReq receivedPaymentReq) {
         logger.info("Received payment request: {}", receivedPaymentReq);
         try {
             emiService.receiveEmiPayment(receivedPaymentReq);

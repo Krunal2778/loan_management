@@ -4,14 +4,12 @@ import com.krunal.loan.common.DateUtils;
 import com.krunal.loan.common.S3BucketUtils;
 import com.krunal.loan.exception.BorrowerNotFoundException;
 import com.krunal.loan.exception.FileUploadException;
-import com.krunal.loan.exception.UserStatusNotFoundException;
 import com.krunal.loan.models.Borrower;
+import com.krunal.loan.models.BorrowerStatus;
 import com.krunal.loan.models.BorrowersFile;
-import com.krunal.loan.models.UserStatus;
 import com.krunal.loan.payload.request.BorrowerRequest;
 import com.krunal.loan.payload.response.MessageResponse;
 import com.krunal.loan.repository.BorrowerRepository;
-import com.krunal.loan.repository.UserStatusRepository;
 import com.krunal.loan.security.jwt.JwtUtils;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -31,21 +29,17 @@ import java.util.*;
 public class BorrowerController {
 
     private static final Logger logger = LoggerFactory.getLogger(BorrowerController.class);
-    private static final String USER_STATUS_NOT_FOUND_ERROR = "Error: User status not found.";
-    private static final String BORROWER_STATUS_TYPE = "BORROWER";
     private static final String BORROWER_NOT_FOUND_LOG = "Borrower with ID {} not found";
     private static final String BORROWER_NOT_FOUND_ERROR = "Error: Borrower not found";
 
     private final BorrowerRepository borrowerRepository;
     private final JwtUtils jwtUtils;
     private final S3BucketUtils bucketUtils3;
-    private final UserStatusRepository userStatusRepository;
 
-    public BorrowerController(BorrowerRepository borrowerRepository, JwtUtils jwtUtils, S3BucketUtils bucketUtils3, UserStatusRepository userStatusRepository) {
+    public BorrowerController(BorrowerRepository borrowerRepository, JwtUtils jwtUtils, S3BucketUtils bucketUtils3) {
         this.borrowerRepository = borrowerRepository;
         this.jwtUtils = jwtUtils;
         this.bucketUtils3 = bucketUtils3;
-        this.userStatusRepository = userStatusRepository;
     }
 
     @PostMapping("/add-borrower")
@@ -63,7 +57,7 @@ public class BorrowerController {
         Set<BorrowersFile> base64Images = new HashSet<>();
 
         Borrower borrower = getBorrower(borrowerRequest);
-        borrower.setStatus(1L); // 1 for active
+        borrower.setStatus(BorrowerStatus.ACTIVE.getCode()); // 1 for active
         borrower.setAddUser(jwtUtils.getLoggedInUserDetails().getId());
 
         // Set the userAccount using a temporary value
@@ -115,7 +109,7 @@ public class BorrowerController {
 
     @PutMapping("/update-borrower/{id}")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
-    public ResponseEntity<MessageResponse> updateBorrower(@PathVariable Long id, @Valid @RequestBody BorrowerRequest borrowerRequest) throws ParseException {
+    public ResponseEntity<MessageResponse> updateBorrower(@PathVariable Long id, @Valid @RequestBody BorrowerRequest borrowerRequest) {
         logger.info("Updating borrower with ID: {}", id);
 
         Optional<Borrower> borrowerOptional = borrowerRepository.findById(id);
@@ -133,7 +127,7 @@ public class BorrowerController {
         borrower.setNotes(borrowerRequest.getNotes());
         borrower.setDob(DateUtils.getDateFromString(borrowerRequest.getDob(), DateUtils.YMD));
 
-       // borrower.setStatus(1L); // 1 for active
+        // borrower.setStatus(1L); // 1 for active
         borrower.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
 
         if (!borrowerRequest.getBase64Image().isEmpty()) {
@@ -186,9 +180,6 @@ public class BorrowerController {
         }
 
         borrowerOptional.ifPresent(borrower -> {
-            UserStatus userStatus = this.userStatusRepository.findByIdAndStatusType(borrower.getStatus(), BORROWER_STATUS_TYPE)
-                    .orElseThrow(() -> new UserStatusNotFoundException(USER_STATUS_NOT_FOUND_ERROR));
-            borrower.setStatusName(userStatus.getStatusName());
             if (borrower.getBorrowersFiles() != null) {
                 borrowerOptional.get().getBorrowersFiles().forEach(borrowersFile -> {
                     try {
@@ -208,11 +199,6 @@ public class BorrowerController {
     public ResponseEntity<List<Borrower>> getAllBorrowers() {
         logger.info("Fetching all borrowers");
         List<Borrower> borrowers = borrowerRepository.findAll();
-        borrowers.forEach(borrower -> {
-            UserStatus userStatus = this.userStatusRepository.findByIdAndStatusType(borrower.getStatus(), BORROWER_STATUS_TYPE)
-                    .orElseThrow(() -> new UserStatusNotFoundException(USER_STATUS_NOT_FOUND_ERROR));
-            borrower.setStatusName(userStatus.getStatusName());
-        });
         return ResponseEntity.ok(borrowers);
     }
 
@@ -222,12 +208,7 @@ public class BorrowerController {
     public ResponseEntity<List<Borrower>> getDefaulterBorrowers() {
         logger.info("Fetching all borrowers with defaulter status");
 
-        List<Borrower> defaulterBorrowers = borrowerRepository.findByStatus(3L);
-        defaulterBorrowers.forEach(borrower -> {
-            UserStatus userStatus = this.userStatusRepository.findByIdAndStatusType(borrower.getStatus(), BORROWER_STATUS_TYPE)
-                    .orElseThrow(() -> new UserStatusNotFoundException(USER_STATUS_NOT_FOUND_ERROR));
-            borrower.setStatusName(userStatus.getStatusName());
-        });
+        List<Borrower> defaulterBorrowers = borrowerRepository.findByStatus(BorrowerStatus.DEFAULTER.getCode());
         return ResponseEntity.ok(defaulterBorrowers);
     }
 
@@ -244,7 +225,7 @@ public class BorrowerController {
         }
 
         Borrower borrower = borrowerOptional.get();
-        borrower.setStatus(0L); // 0 for Suspended
+        borrower.setStatus(BorrowerStatus.SUSPENDED.getCode()); // 0 for Suspended
         borrower.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
 
         borrowerRepository.updateStatusByBorrowerId(id, borrower.getStatus(), borrower.getUpdatedUser());
@@ -282,7 +263,7 @@ public class BorrowerController {
         }
 
         Borrower borrower = borrowerOptional.get();
-        borrower.setStatus(3L); // 3 for defaulter
+        borrower.setStatus(BorrowerStatus.DEFAULTER.getCode()); // 3 for defaulter
         borrower.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
 
         borrowerRepository.updateStatusByBorrowerId(id, borrower.getStatus(), borrower.getUpdatedUser());
@@ -297,15 +278,10 @@ public class BorrowerController {
         logger.info("Searching borrowers with keyword: {}", keyword);
 
         List<Borrower> borrowers = borrowerRepository.searchBorrowers(keyword);
-        borrowers.forEach(borrower -> {
-            UserStatus userStatus = this.userStatusRepository.findByIdAndStatusType(borrower.getStatus(), BORROWER_STATUS_TYPE)
-                    .orElseThrow(() -> new UserStatusNotFoundException(USER_STATUS_NOT_FOUND_ERROR));
-            borrower.setStatusName(userStatus.getStatusName());
-        });
         return ResponseEntity.ok(borrowers);
     }
 
-    private Borrower getBorrower(BorrowerRequest borrowerRequest) throws ParseException {
+    private Borrower getBorrower(BorrowerRequest borrowerRequest) {
         Borrower borrower = new Borrower();
         borrower.setName(borrowerRequest.getName());
         borrower.setFatherName(borrowerRequest.getFatherName());

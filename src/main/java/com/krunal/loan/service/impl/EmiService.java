@@ -8,7 +8,7 @@ import com.krunal.loan.models.Emi;
 import com.krunal.loan.payload.request.CalculateContributionReq;
 import com.krunal.loan.payload.request.EmiCalculationRequest;
 import com.krunal.loan.payload.request.EmiScheduleRequest;
-import com.krunal.loan.payload.request.ReceivedPaymentReq;
+import com.krunal.loan.payload.request.EmiUpdateReq;
 import com.krunal.loan.payload.response.ContributionResponse;
 import com.krunal.loan.payload.response.EmiCalculationResponse;
 import com.krunal.loan.repository.EmiRepository;
@@ -72,7 +72,7 @@ public class EmiService {
             emiSchedule.setEmiNo(i);
             emiSchedule.setEmiDate(emiDate);
             emiSchedule.setEmiAmount((double) emiAmount);
-            emiSchedule.setEmiReceived(0.0);
+            emiSchedule.setEmiReceivedAmount(0.0);
             emiSchedule.setLoanId(loanId);
             emiSchedule.setStatus(2L); // Upcoming
             emiSchedule.setAddUser(jwtUtils.getLoggedInUserDetails().getId());
@@ -244,7 +244,7 @@ public class EmiService {
         }
     }
 
-    public void receiveEmiPayment(ReceivedPaymentReq receivedPaymentReq) {
+    public void receiveEmiPayment(EmiUpdateReq receivedPaymentReq) {
         logger.info("Processing payment for EMI ID: {}", receivedPaymentReq.getEmiId());
         try {
             Optional<Emi> emiOptional = emiRepository.findById(receivedPaymentReq.getEmiId());
@@ -254,12 +254,12 @@ public class EmiService {
             }
 
             Emi emi = emiOptional.get();
-            emi.setEmiReceived(receivedPaymentReq.getAmountReceivedAmount());
+            emi.setEmiReceivedAmount(receivedPaymentReq.getAmountReceivedAmount());
             emi.setStatus(receivedPaymentReq.getStatusId()); // Paid
             emi.setPaymentMode(receivedPaymentReq.getPaymentType());
             emi.setNotes(receivedPaymentReq.getNotes());
             emi.setEmiReceivedDate(DateUtils.getDateFromString(receivedPaymentReq.getPaymentReceivedDate(), DateUtils.YMD));
-            emi.setEmiReceivedUser(receivedPaymentReq.getPaymentReceivedUser());
+            emi.setReceiverName(receivedPaymentReq.getReceiverName());
             emi.setEmiDate(DateUtils.getDateFromString(receivedPaymentReq.getEmiDate(), DateUtils.YMD));
             emi.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
 

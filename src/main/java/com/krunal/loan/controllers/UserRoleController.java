@@ -2,10 +2,7 @@ package com.krunal.loan.controllers;
 
 import com.krunal.loan.common.S3BucketUtils;
 import com.krunal.loan.exception.*;
-import com.krunal.loan.models.ERole;
-import com.krunal.loan.models.Role;
-import com.krunal.loan.models.User;
-import com.krunal.loan.models.UserStatus;
+import com.krunal.loan.models.*;
 import com.krunal.loan.payload.request.ChangePasswordRequest;
 import com.krunal.loan.payload.request.UpdateRoleRequest;
 import com.krunal.loan.payload.response.MessageResponse;
@@ -73,10 +70,6 @@ public class UserRoleController {
         logger.info("Fetching user list");
         try {
             List<User> users = this.userRepository.findAll().stream().filter(user -> user.getStatus() != 0).toList();
-            users.forEach(user -> {
-                UserStatus userStatus = this.userStatusRepository.findByIdAndStatusType(user.getStatus(), "USER").orElseThrow(() -> new UserStatusNotFoundException(USER_STATUS_NOT_FOUND_ERROR));
-                user.setStatusName(userStatus.getStatusName());
-            });
             return new ResponseEntity<>(users, HttpStatus.OK);
         } catch (Exception e) {
             logger.error("Error fetching user list", e);
@@ -84,7 +77,7 @@ public class UserRoleController {
         }
     }
 
-    @PutMapping("/updateuser")
+    @PutMapping("/update-user")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<User> updateUser(@Valid @RequestBody UpdateRoleRequest user) {
         logger.info("Updating user with username: {}", user.getUsername());
@@ -94,6 +87,7 @@ public class UserRoleController {
                 User users = userOptional.get();
                 users.setEmail(user.getEmail());
                 users.setPhoneNo(user.getPhoneNo());
+                users.setStatus(user.getStatus());
                 String filePath = null;
                 if (user.getBase64Image() != null) {
                     filePath = bucketUtils3.uploadImageToS3Bucket(user.getBase64Image());
@@ -126,47 +120,8 @@ public class UserRoleController {
         }
     }
 
-    @PutMapping("/deleteuser/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<User> deleteUser(@Valid @PathVariable Long id) {
-        logger.info("Deleting user with ID: {}", id);
-        try {
-            Optional<User> userOptional = this.userRepository.findById(id);
-            if (userOptional.isPresent()) {
-                User users = userOptional.get();
-                users.setStatus(0L);
-                return new ResponseEntity<>(this.userRepository.save(users), HttpStatus.OK);
-            } else {
-                logger.warn(USER_NOT_FOUND_WITH_ID, id);
-                throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
-            }
-        } catch (Exception e) {
-            logger.error("Error deleting user with ID: {}", id, e);
-            throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
-        }
-    }
 
-    @PutMapping("/inactivateduser/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<User> inactivatedUser(@Valid @PathVariable Long id) {
-        logger.info("Inactivating user with ID: {}", id);
-        try {
-            Optional<User> userOptional = this.userRepository.findById(id);
-            if (userOptional.isPresent()) {
-                User users = userOptional.get();
-                users.setStatus(2L);
-                return new ResponseEntity<>(this.userRepository.save(users), HttpStatus.OK);
-            } else {
-                logger.warn(USER_NOT_FOUND_WITH_ID, id);
-                throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
-            }
-        } catch (Exception e) {
-            logger.error("Error inactivating user with ID: {}", id, e);
-            throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
-        }
-    }
-
-    @PutMapping("/activateduser/{id}")
+    @PutMapping("/activated-user/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<User> activatedUser(@Valid @PathVariable Long id) {
         logger.info("Activating user with ID: {}", id);
@@ -174,7 +129,7 @@ public class UserRoleController {
             Optional<User> userOptional = this.userRepository.findById(id);
             if (userOptional.isPresent()) {
                 User users = userOptional.get();
-                users.setStatus(1L);
+                users.setStatus(UsersStatus.ACTIVE.getCode());
                 return new ResponseEntity<>(this.userRepository.save(users), HttpStatus.OK);
             } else {
                 logger.warn(USER_NOT_FOUND_WITH_ID, id);
@@ -186,15 +141,13 @@ public class UserRoleController {
         }
     }
 
-    @GetMapping("/userdetails/{id}")
+    @GetMapping("/user-details/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<User> getUserDetailsById(@PathVariable Long id) {
         logger.info("Fetching user details for ID: {}", id);
         Optional<User> userOptional = this.userRepository.findById(id);
         if (userOptional.isPresent()) {
             userOptional.ifPresent(user -> {
-                UserStatus userStatus = this.userStatusRepository.findByIdAndStatusType(user.getStatus(), "USER").orElseThrow(() -> new UserStatusNotFoundException(USER_STATUS_NOT_FOUND_ERROR));
-                user.setStatusName(userStatus.getStatusName());
                 if (user.getFilePath() != null) {
                     try {
                         user.setBase64Image(this.bucketUtils3.getFileFromS3(user.getFilePath()));
@@ -210,7 +163,7 @@ public class UserRoleController {
         }
     }
 
-    @PutMapping("/changepassword")
+    @PutMapping("/change-password")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MessageResponse> changePassword( @RequestBody ChangePasswordRequest changePassword) {
         logger.info("Changing password for user with ID: {}", changePassword.getId());

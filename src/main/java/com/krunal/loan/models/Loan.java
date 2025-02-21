@@ -88,4 +88,14 @@ public class Loan {
     @OneToMany(mappedBy = "loan", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Emi> emis ;
+
+    public String getPaymentModeName() {
+        PaymentType type = PaymentType.fromCode(this.paymentModeId);
+        return (type != null) ? type.getDisplayName() : "Unknown";
+    }
+
+    public String getStatusName() {
+        LoanStatus loanStatus = LoanStatus.fromCode(this.status);
+        return (loanStatus != null) ? loanStatus.getDisplayName() : "Unknown";
+    }
 }
