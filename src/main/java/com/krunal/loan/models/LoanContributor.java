@@ -29,7 +29,10 @@ public class LoanContributor {
     private Long contributorId;
 
     @Transient
-    private String loanAccountNo;
+    private String loanAccount;
+
+    @Transient
+    private Integer loanDuration;
 
     @NotNull
     private Double contributorAmount;

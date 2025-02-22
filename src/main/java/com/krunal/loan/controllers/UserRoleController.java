@@ -1,18 +1,18 @@
 package com.krunal.loan.controllers;
 
-import com.krunal.loan.common.DateUtils;
 import com.krunal.loan.common.S3BucketUtils;
 import com.krunal.loan.exception.*;
 import com.krunal.loan.models.*;
 import com.krunal.loan.payload.request.ChangePasswordRequest;
 import com.krunal.loan.payload.request.UpdateRoleRequest;
+import com.krunal.loan.payload.response.ContributorSummary;
 import com.krunal.loan.payload.response.MessageResponse;
 import com.krunal.loan.payload.response.PartnerDetail;
 import com.krunal.loan.payload.response.PartnerList;
 import com.krunal.loan.repository.LoanContributorRepository;
+import com.krunal.loan.repository.LoanRepository;
 import com.krunal.loan.repository.RoleRepository;
 import com.krunal.loan.repository.UserRepository;
-import com.krunal.loan.repository.UserStatusRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,14 +42,16 @@ public class UserRoleController {
     private final S3BucketUtils bucketUtils3;
     private final PasswordEncoder encoder;
     private final LoanContributorRepository contributorRepository;
+    private final LoanRepository loanRepository;
 
     @Autowired
-    public UserRoleController(RoleRepository roleRepository, UserRepository userRepository, S3BucketUtils bucketUtils3, PasswordEncoder encoder, LoanContributorRepository contributorRepository) {
+    public UserRoleController(RoleRepository roleRepository, UserRepository userRepository, S3BucketUtils bucketUtils3, PasswordEncoder encoder, LoanContributorRepository contributorRepository, LoanRepository loanRepository) {
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
         this.bucketUtils3 = bucketUtils3;
         this.encoder = encoder;
         this.contributorRepository = contributorRepository;
+        this.loanRepository = loanRepository;
     }
 
     @GetMapping("/rolelist")
@@ -75,12 +77,26 @@ public class UserRoleController {
             List<User> users = this.userRepository.findAll();
             List<User> activeUsers = new ArrayList<>();
             for (User user : users) {
-                    Date date = user.getAddDate();
-                    String formattedDate = new SimpleDateFormat("dd-MM-yyyy").format(date);
-                    user.setJoinDate(formattedDate);
-                    activeUsers.add(user);
+                Date date = user.getAddDate();
+                String formattedDate = new SimpleDateFormat("dd-MM-yyyy").format(date);
+                user.setJoinDate(formattedDate);
+                activeUsers.add(user);
+
+                ContributorSummary contributorSummary = getContributorSummary(user.getId());
+                if (contributorSummary != null) {
+                    user.setInvestedAmount(contributorSummary.getInvestedAmount());
+                    user.setNetProfitAmount(contributorSummary.getNetProfitAmount());
+                    user.setTotalAmount(contributorSummary.getTotalAmount());
+                    user.setNoOfLoanInvested(contributorSummary.getNoOfLoans());
+                } else {
+                    user.setInvestedAmount(0.0);
+                    user.setNetProfitAmount(0.0);
+                    user.setTotalAmount(0.0);
+                    user.setNoOfLoanInvested(0L);
+                }
             }
             partnerList.setUserList(activeUsers);
+
             return new ResponseEntity<>(partnerList, HttpStatus.OK);
         } catch (Exception e) {
             logger.error("Error fetching user list", e);
@@ -188,11 +204,27 @@ public class UserRoleController {
                         logger.error("Error fetching file from S3 for user: {}", user.getUsername(), e);
                     }
                 }
+                ContributorSummary contributorSummary = getContributorSummary(user.getId());
+                if (contributorSummary != null) {
+                    user.setInvestedAmount(contributorSummary.getInvestedAmount());
+                    user.setNetProfitAmount(contributorSummary.getNetProfitAmount());
+                    user.setTotalAmount(contributorSummary.getTotalAmount());
+                    user.setNoOfLoanInvested(contributorSummary.getNoOfLoans());
+                } else {
+                    user.setInvestedAmount(0.0);
+                    user.setNetProfitAmount(0.0);
+                    user.setTotalAmount(0.0);
+                    user.setNoOfLoanInvested(0L);
+                }
             });
 
             partnerDetail.setUser(userOptional.get());
 
-            List <LoanContributor> contributorList= contributorRepository.findByContributorId(id);
+            List<LoanContributor> contributorList = contributorRepository.findByContributorId(id);
+            contributorList.forEach(lb -> loanRepository.findById(lb.getLoanId()).ifPresent(loan -> {
+                lb.setLoanAccount(loan.getLoanAccount());
+                lb.setLoanDuration(loan.getLoanDuration());
+            }));
             partnerDetail.setContributorList(contributorList);
             return new ResponseEntity<>(partnerDetail, HttpStatus.OK);
         } else {
@@ -227,5 +259,19 @@ public class UserRoleController {
             logger.error("Error changing password for user with ID: {}", changePassword.getId(), e);
             throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
         }
+    }
+
+    public ContributorSummary getContributorSummary(Long contributorId) {
+        List<Object[]> results = contributorRepository.findContributorSummaryByContributorId(contributorId);
+        if (results != null && !results.isEmpty()) {
+            Object[] result = results.getFirst();
+            Double investedAmount = result[0] != null ? ((Number) result[0]).doubleValue() : 0.0;
+            Double netProfitAmount = result[1] != null ? ((Number) result[1]).doubleValue() : 0.0;
+            Long noOfLoans = result[2] != null ? ((Number) result[2]).longValue() : 0L;
+            Double totalAmount = investedAmount + netProfitAmount;
+
+            return new ContributorSummary(investedAmount, netProfitAmount, totalAmount, noOfLoans);
+        }
+        return null;
     }
 }
