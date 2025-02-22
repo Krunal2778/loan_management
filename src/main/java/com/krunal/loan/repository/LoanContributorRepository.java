@@ -12,4 +12,7 @@ import java.util.List;
 public interface LoanContributorRepository extends JpaRepository<LoanContributor, Long> {
     @Query("SELECT lc FROM LoanContributor lc WHERE lc.loanId = :loanId")
     List<LoanContributor> findByLoanId(@Param("loanId") Long loanId);
+
+    @Query("SELECT lc FROM LoanContributor lc WHERE lc.contributorId = :contributorId")
+    List<LoanContributor> findByContributorId(@Param("contributorId") Long contributorId);
 }

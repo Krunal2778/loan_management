@@ -81,11 +81,20 @@ public class AuthController {
         List<String> roles = List.copyOf(userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList());
 
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
+        String imageSign =null;
+        if (userDetails.getSignatureImage() != null) {
+            try {
 
+                imageSign = this.bucketUtils3.getFileFromS3(userDetails.getSignatureImage());
+            } catch (Exception e) {
+                imageSign = userDetails.getSignatureImage();
+                logger.error("Error fetching file from S3 for user: {}", userDetails.getUsername(), e);
+            }
+        }
         logger.info("User authenticated successfully with username: {}", loginRequest.getUsername());
 
         return ResponseEntity.ok(new JwtResponse(jwt, refreshToken.getToken(), userDetails.getId(),
-                userDetails.getUsername(), userDetails.getEmail(), roles));
+                userDetails.getUsername(), roles, userDetails.getName(), imageSign));
     }
 
     @PostMapping("/adduser")
@@ -153,7 +162,7 @@ public class AuthController {
         user.setPartnerId("TEMP");
         user.setRoles(roles);
         user = userRepository.save(user);
-        user.setPartnerId(String.format("PN-%07d", user.getId()));
+        user.setPartnerId(String.format("PN-%03d", user.getId()));
         userRepository.updatePartnerIdById(user.getId(), user.getPartnerId());
         logger.info("User registered successfully with username: {}", signUpRequest.getUsername());
 

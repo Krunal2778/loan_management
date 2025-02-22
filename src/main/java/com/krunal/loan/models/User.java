@@ -57,6 +57,21 @@ public class User {
 	@Transient
 	private String base64Image;
 
+	@Transient
+	private String joinDate;
+
+	@Transient
+	Double investedAmount;
+
+	@Transient
+	Double netProfitAmount;
+
+	@Transient
+	Double totalAmount;
+
+	@Transient
+	Long noOfLoanInvested;
+
 	@Size(max = 10)
 	private String partnerId;
 

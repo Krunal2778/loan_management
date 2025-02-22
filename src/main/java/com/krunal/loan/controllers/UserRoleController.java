@@ -1,11 +1,15 @@
 package com.krunal.loan.controllers;
 
+import com.krunal.loan.common.DateUtils;
 import com.krunal.loan.common.S3BucketUtils;
 import com.krunal.loan.exception.*;
 import com.krunal.loan.models.*;
 import com.krunal.loan.payload.request.ChangePasswordRequest;
 import com.krunal.loan.payload.request.UpdateRoleRequest;
 import com.krunal.loan.payload.response.MessageResponse;
+import com.krunal.loan.payload.response.PartnerDetail;
+import com.krunal.loan.payload.response.PartnerList;
+import com.krunal.loan.repository.LoanContributorRepository;
 import com.krunal.loan.repository.RoleRepository;
 import com.krunal.loan.repository.UserRepository;
 import com.krunal.loan.repository.UserStatusRepository;
@@ -20,10 +24,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 @CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
 @RestController
@@ -34,21 +36,20 @@ public class UserRoleController {
     private static final String USER_NOT_FOUND_ERROR = "Error: User not found.";
     private static final String USER_NOT_FOUND_WITH_ID = "User not found with ID: {}";
     private static final String ROLE_NOT_FOUND_ERROR = "Error: Role is not found.";
-    private static final String USER_STATUS_NOT_FOUND_ERROR = "Error: User status not found.";
 
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
-    private final UserStatusRepository userStatusRepository;
     private final S3BucketUtils bucketUtils3;
     private final PasswordEncoder encoder;
+    private final LoanContributorRepository contributorRepository;
 
     @Autowired
-    public UserRoleController(RoleRepository roleRepository, UserRepository userRepository, UserStatusRepository userStatusRepository, S3BucketUtils bucketUtils3, PasswordEncoder encoder) {
+    public UserRoleController(RoleRepository roleRepository, UserRepository userRepository, S3BucketUtils bucketUtils3, PasswordEncoder encoder, LoanContributorRepository contributorRepository) {
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
-        this.userStatusRepository = userStatusRepository;
         this.bucketUtils3 = bucketUtils3;
         this.encoder = encoder;
+        this.contributorRepository = contributorRepository;
     }
 
     @GetMapping("/rolelist")
@@ -67,11 +68,20 @@ public class UserRoleController {
 
     @GetMapping("/userlist")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<User>> getUserList() {
+    public ResponseEntity<PartnerList> getUserList() {
         logger.info("Fetching user list");
+        PartnerList partnerList = new PartnerList();
         try {
-            List<User> users = this.userRepository.findAll().stream().filter(user -> user.getStatus() != 0).toList();
-            return new ResponseEntity<>(users, HttpStatus.OK);
+            List<User> users = this.userRepository.findAll();
+            List<User> activeUsers = new ArrayList<>();
+            for (User user : users) {
+                    Date date = user.getAddDate();
+                    String formattedDate = new SimpleDateFormat("dd-MM-yyyy").format(date);
+                    user.setJoinDate(formattedDate);
+                    activeUsers.add(user);
+            }
+            partnerList.setUserList(activeUsers);
+            return new ResponseEntity<>(partnerList, HttpStatus.OK);
         } catch (Exception e) {
             logger.error("Error fetching user list", e);
             throw new UserListNotFoundException("Error: User list not found.");
@@ -100,17 +110,35 @@ public class UserRoleController {
                     }
                     users.setFilePath(filePath);
                 }
+                Set<String> strRoles = user.getRole();
                 Set<Role> roles = new HashSet<>();
-                Role userRole = switch (user.getRole()) {
-                    case "ROLE_ADMIN" ->
-                            roleRepository.findByName(ERole.ROLE_ADMIN).orElseThrow(() -> new RoleNotFoundException(ROLE_NOT_FOUND_ERROR));
-                    case "ROLE_MANAGER" ->
-                            roleRepository.findByName(ERole.ROLE_MANAGER).orElseThrow(() -> new RoleNotFoundException(ROLE_NOT_FOUND_ERROR));
-                    case "ROLE_USER" ->
-                            roleRepository.findByName(ERole.ROLE_USER).orElseThrow(() -> new RoleNotFoundException(ROLE_NOT_FOUND_ERROR));
-                    default -> null;
-                };
-                roles.add(userRole);
+
+                if (strRoles == null) {
+                    Role userRole = roleRepository.findByName(ERole.ROLE_USER)
+                            .orElseThrow(() -> new RuntimeException(ROLE_NOT_FOUND_ERROR));
+                    roles.add(userRole);
+                } else {
+                    strRoles.forEach(role -> {
+                        switch (role) {
+                            case "ROLE_ADMIN":
+                                Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
+                                        .orElseThrow(() -> new RuntimeException(ROLE_NOT_FOUND_ERROR));
+                                roles.add(adminRole);
+
+                                break;
+                            case "ROLE_MANAGER":
+                                Role modRole = roleRepository.findByName(ERole.ROLE_MANAGER)
+                                        .orElseThrow(() -> new RuntimeException(ROLE_NOT_FOUND_ERROR));
+                                roles.add(modRole);
+
+                                break;
+                            default:
+                                Role userRole = roleRepository.findByName(ERole.ROLE_USER)
+                                        .orElseThrow(() -> new RuntimeException(ROLE_NOT_FOUND_ERROR));
+                                roles.add(userRole);
+                        }
+                    });
+                }
                 users.setRoles(roles);
                 return new ResponseEntity<>(this.userRepository.save(users), HttpStatus.OK);
             } else {
@@ -123,34 +151,36 @@ public class UserRoleController {
         }
     }
 
-
-    @PutMapping("/activated-user/{id}")
+    @DeleteMapping("/delete-user/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<User> activatedUser(@Valid @PathVariable Long id) {
-        logger.info("Activating user with ID: {}", id);
+    public ResponseEntity<MessageResponse> deleteUser(@PathVariable Long id) {
+        logger.info("Deleting user with ID: {}", id);
         try {
             Optional<User> userOptional = this.userRepository.findById(id);
             if (userOptional.isPresent()) {
-                User users = userOptional.get();
-                users.setStatus(UsersStatus.ACTIVE.getCode());
-                return new ResponseEntity<>(this.userRepository.save(users), HttpStatus.OK);
+                this.userRepository.deleteById(id);
+                return ResponseEntity.ok(new MessageResponse("User deleted successfully!"));
             } else {
                 logger.warn(USER_NOT_FOUND_WITH_ID, id);
                 throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
             }
         } catch (Exception e) {
-            logger.error("Error activating user with ID: {}", id, e);
+            logger.error("Error deleting user with ID: {}", id, e);
             throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
         }
     }
-
     @GetMapping("/user-details/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<User> getUserDetailsById(@PathVariable Long id) {
+    public ResponseEntity<PartnerDetail> getUserDetailsById(@PathVariable Long id) {
         logger.info("Fetching user details for ID: {}", id);
+        PartnerDetail partnerDetail =new PartnerDetail();
         Optional<User> userOptional = this.userRepository.findById(id);
         if (userOptional.isPresent()) {
             userOptional.ifPresent(user -> {
+                Date date = user.getAddDate();
+                String formattedDate = new SimpleDateFormat("dd-MM-yyyy").format(date);
+                user.setJoinDate(formattedDate);
+
                 if (user.getFilePath() != null) {
                     try {
                         user.setBase64Image(this.bucketUtils3.getFileFromS3(user.getFilePath()));
@@ -159,7 +189,12 @@ public class UserRoleController {
                     }
                 }
             });
-            return new ResponseEntity<>(userOptional.get(), HttpStatus.OK);
+
+            partnerDetail.setUser(userOptional.get());
+
+            List <LoanContributor> contributorList= contributorRepository.findByContributorId(id);
+            partnerDetail.setContributorList(contributorList);
+            return new ResponseEntity<>(partnerDetail, HttpStatus.OK);
         } else {
             logger.warn(USER_NOT_FOUND_WITH_ID, id);
             throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
