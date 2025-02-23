@@ -92,7 +92,7 @@ public class ResponseAspect {
 
     private void addUserNameToObject(Object obj, Long userId, String userNameField) {
         userService.findById(userId).ifPresent(user -> {
-            String userName = user.getUsername();
+            String userName = user.getName();
             try {
                 Field field = obj.getClass().getDeclaredField(userNameField);
                 field.setAccessible(true);

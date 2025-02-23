@@ -11,6 +11,7 @@ import com.krunal.loan.payload.request.BorrowerRequest;
 import com.krunal.loan.payload.response.MessageResponse;
 import com.krunal.loan.repository.BorrowerRepository;
 import com.krunal.loan.security.jwt.JwtUtils;
+import com.krunal.loan.service.impl.BorrowerService;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -19,8 +20,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.text.ParseException;
 import java.util.*;
 
 @CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
@@ -35,17 +34,19 @@ public class BorrowerController {
     private final BorrowerRepository borrowerRepository;
     private final JwtUtils jwtUtils;
     private final S3BucketUtils bucketUtils3;
+    private final BorrowerService borrowerService;
 
-    public BorrowerController(BorrowerRepository borrowerRepository, JwtUtils jwtUtils, S3BucketUtils bucketUtils3) {
+    public BorrowerController(BorrowerRepository borrowerRepository, JwtUtils jwtUtils, S3BucketUtils bucketUtils3, BorrowerService borrowerService) {
         this.borrowerRepository = borrowerRepository;
         this.jwtUtils = jwtUtils;
         this.bucketUtils3 = bucketUtils3;
+        this.borrowerService = borrowerService;
     }
 
     @PostMapping("/add-borrower")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     @Transactional
-    public ResponseEntity<MessageResponse> registerBorrower(@Valid @RequestBody BorrowerRequest borrowerRequest) throws ParseException {
+    public ResponseEntity<MessageResponse> registerBorrower(@Valid @RequestBody BorrowerRequest borrowerRequest)  {
         logger.info("Registering borrower with email: {}", borrowerRequest.getEmail());
 
         if (Boolean.TRUE.equals(borrowerRepository.existsByEmail(borrowerRequest.getEmail()))) {
@@ -100,7 +101,7 @@ public class BorrowerController {
         }
 
         // Set the userAccount using the borrowerId formatted to 7 digits
-        borrower.setUserAccount(String.format("OD-%07d", borrower.getBorrowerId()));
+        borrower.setUserAccount(String.format("OD-%04d", borrower.getBorrowerId()));
         borrowerRepository.save(borrower); // Save the borrower again with the updated userAccount
         logger.info("Borrower user account set to: {}", borrower.getUserAccount());
 
@@ -126,8 +127,7 @@ public class BorrowerController {
         borrower.setAddress(borrowerRequest.getAddress());
         borrower.setNotes(borrowerRequest.getNotes());
         borrower.setDob(DateUtils.getDateFromString(borrowerRequest.getDob(), DateUtils.YMD));
-
-        // borrower.setStatus(1L); // 1 for active
+        borrower.setStatus(borrowerRequest.getStatus());
         borrower.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
 
         if (!borrowerRequest.getBase64Image().isEmpty()) {
@@ -173,7 +173,10 @@ public class BorrowerController {
     public ResponseEntity<Borrower> getBorrowerById(@PathVariable Long id) {
         logger.info("Fetching borrower with ID: {}", id);
 
-        Optional<Borrower> borrowerOptional = borrowerRepository.findById(id);
+        Optional<Borrower> borrowerOptional = borrowerService.getAllBorrowersList().stream()
+                .filter(borrower -> borrower.getBorrowerId().equals(id))
+                .findAny();
+
         if (borrowerOptional.isEmpty()) {
             logger.warn(BORROWER_NOT_FOUND_LOG, id);
             throw new BorrowerNotFoundException(BORROWER_NOT_FOUND_ERROR);
@@ -181,57 +184,25 @@ public class BorrowerController {
 
         borrowerOptional.ifPresent(borrower -> {
             if (borrower.getBorrowersFiles() != null) {
-                borrowerOptional.get().getBorrowersFiles().forEach(borrowersFile -> {
+                borrower.getBorrowersFiles().forEach(borrowersFile -> {
                     try {
                         borrowersFile.setFilePath(this.bucketUtils3.getFileFromS3(borrowersFile.getFilePath()));
                     } catch (Exception e) {
-                        logger.error("Error fetching file from S3 for borrower: {}", borrowerOptional.get().getUserAccount(), e);
+                        logger.error("Error fetching file from S3 for borrower: {}", borrower.getUserAccount(), e);
                     }
                 });
             }
         });
-        return new ResponseEntity<>(borrowerOptional.get(), HttpStatus.OK);
 
+        return new ResponseEntity<>(borrowerOptional.get(), HttpStatus.OK);
     }
 
     @GetMapping("/borrower-list")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<Borrower>> getAllBorrowers() {
         logger.info("Fetching all borrowers");
-        List<Borrower> borrowers = borrowerRepository.findAll();
+        List<Borrower> borrowers = borrowerService.getAllBorrowersList();
         return ResponseEntity.ok(borrowers);
-    }
-
-
-    @GetMapping("/defaulters-list")
-    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
-    public ResponseEntity<List<Borrower>> getDefaulterBorrowers() {
-        logger.info("Fetching all borrowers with defaulter status");
-
-        List<Borrower> defaulterBorrowers = borrowerRepository.findByStatus(BorrowerStatus.DEFAULTER.getCode());
-        return ResponseEntity.ok(defaulterBorrowers);
-    }
-
-
-    @PutMapping("/{id}/suspended")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<MessageResponse> suspendedBorrower(@PathVariable Long id) {
-        logger.info("Disapproving borrower with ID: {}", id);
-
-        Optional<Borrower> borrowerOptional = borrowerRepository.findById(id);
-        if (borrowerOptional.isEmpty()) {
-            logger.warn(BORROWER_NOT_FOUND_LOG, id);
-            throw new BorrowerNotFoundException(BORROWER_NOT_FOUND_ERROR);
-        }
-
-        Borrower borrower = borrowerOptional.get();
-        borrower.setStatus(BorrowerStatus.SUSPENDED.getCode()); // 0 for Suspended
-        borrower.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
-
-        borrowerRepository.updateStatusByBorrowerId(id, borrower.getStatus(), borrower.getUpdatedUser());
-        logger.info("Borrower with ID {} disapproved successfully", id);
-
-        return ResponseEntity.ok(new MessageResponse("Borrower approved successfully!"));
     }
 
     @DeleteMapping("/{id}")
@@ -249,27 +220,6 @@ public class BorrowerController {
         logger.info("Borrower with ID {} deleted successfully", id);
 
         return ResponseEntity.ok(new MessageResponse("Borrower deleted successfully!"));
-    }
-
-    @PutMapping("/{id}/defaulter")
-    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
-    public ResponseEntity<MessageResponse> markBorrowerAsDefaulter(@PathVariable Long id) {
-        logger.info("Marking borrower with ID: {} as defaulter", id);
-
-        Optional<Borrower> borrowerOptional = borrowerRepository.findById(id);
-        if (borrowerOptional.isEmpty()) {
-            logger.warn(BORROWER_NOT_FOUND_LOG, id);
-            throw new BorrowerNotFoundException(BORROWER_NOT_FOUND_ERROR);
-        }
-
-        Borrower borrower = borrowerOptional.get();
-        borrower.setStatus(BorrowerStatus.DEFAULTER.getCode()); // 3 for defaulter
-        borrower.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
-
-        borrowerRepository.updateStatusByBorrowerId(id, borrower.getStatus(), borrower.getUpdatedUser());
-        logger.info("Borrower with ID {} marked as defaulter successfully", id);
-
-        return ResponseEntity.ok(new MessageResponse("Borrower marked as defaulter successfully!"));
     }
 
     @GetMapping("/search")

@@ -1,6 +1,7 @@
 package com.krunal.loan.models;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -26,7 +27,9 @@ public class Loan {
     private Long id;
 
     @NotNull
+    @Column(name = "borrower_id", nullable = true)
     private Long borrowerId;
+
 
     @NotNull
     @Column(length = 10)
@@ -88,6 +91,11 @@ public class Loan {
     @OneToMany(mappedBy = "loan", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Emi> emis ;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "borrower_id", insertable = false, updatable = false)
+    @JsonIgnore
+    private Borrower borrower;
 
     public String getPaymentModeName() {
         PaymentType type = PaymentType.fromCode(this.paymentModeId);

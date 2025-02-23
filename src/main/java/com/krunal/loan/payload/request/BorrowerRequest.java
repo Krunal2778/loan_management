@@ -43,5 +43,7 @@ public class BorrowerRequest implements Serializable {
     @Size(max = 300, message = "Notes must be at most 300 characters")
     private String notes;
 
+    private Long status;
+
     private Set<String> base64Image;
 }

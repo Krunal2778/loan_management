@@ -1,6 +1,7 @@
 package com.krunal.loan.models;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
@@ -14,6 +15,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -60,6 +62,17 @@ public class Borrower  {
 	@NotNull
 	private Long addUser;
 
+	@Transient
+	private String addUserName;
+
+	@Transient
+	private Integer noOfLoan;
+
+	@Transient
+	private Double totalLoanAmount;
+
+
+
 	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 	@CreationTimestamp
 	@Temporal(TemporalType.TIMESTAMP)
@@ -75,6 +88,10 @@ public class Borrower  {
 
 	@OneToMany(mappedBy = "borrower", cascade = CascadeType.ALL, orphanRemoval = true)
 	private Set<BorrowersFile> borrowersFiles = new HashSet<>();
+
+	@OneToMany(mappedBy = "borrower", cascade = CascadeType.ALL, orphanRemoval = true)
+	@JsonManagedReference
+	private List<Loan> loans;
 
 	public void addBorrowersFile(BorrowersFile borrowersFile) {
 		borrowersFiles.add(borrowersFile);
