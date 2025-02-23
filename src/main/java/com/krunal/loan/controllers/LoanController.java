@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.*;
 
 @CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
@@ -128,12 +129,32 @@ public class LoanController {
     public ResponseEntity<?> getLoanAccountById(@PathVariable Long loanId) {
         logger.info("Fetching loan account with ID: {}", loanId);
 
-        Loan loan = loanRepository.findById(loanId).orElse(null);
-        if (loan == null) {
-            return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_NOT_FOUND, loanId)));
-        }
+        try {
+            Loan loan = loanRepository.findById(loanId).orElse(null);
+            if (loan == null) {
+                logger.warn("Loan not found with ID: {}", loanId);
+                return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_NOT_FOUND, loanId)));
+            }
 
-        return ResponseEntity.ok(loan);
+            List<Object[]> results = emiService.findEmiSummaryByLoanId(loanId);
+            if (results != null && !results.isEmpty()) {
+                Object[] result = results.getFirst();
+                double receivedAmount = result[0] != null ? ((Number) result[0]).doubleValue() : 0.0;
+                Integer receivedEmis = result[1] != null ? ((Number) result[1]).intValue() : 0;
+                loan.setReceivedAmount(receivedAmount);
+                loan.setReceivedEmis(receivedEmis);
+                loan.setExpectedProfit(loan.getExpectedProfit());
+                loan.setRemainingEmis(loan.getLoanDuration() - loan.getReceivedEmis());
+                loan.setTotalAmount(loan.getLoanDuration() * loan.getEmpPerMonth());
+                loan.setOutstandingAmount(loan.getTotalAmount() - loan.getReceivedAmount());
+            }
+
+            logger.info("Loan account with ID: {} fetched successfully", loanId);
+            return ResponseEntity.ok(loan);
+        } catch (Exception e) {
+            logger.error("Error fetching loan account with ID: {}", loanId, e);
+            return ResponseEntity.internalServerError().body(new MessageResponse("Error fetching loan account"));
+        }
     }
 
     @GetMapping("/loan-list")
@@ -187,7 +208,7 @@ public class LoanController {
         scheduleRequest.setNumberOfEmis(loan.getLoanDuration());
         scheduleRequest.setFirstEmiDate(loan.getEmiStartDate());
         emiService.generateEmiSchedule(scheduleRequest);
-        loanRepository.updateStatusByLoanId(loan.getId(),loan.getStatus(), loan.getUpdatedUser());
+        loanRepository.updateStatusByLoanId(loan.getId(), loan.getStatus(), loan.getUpdatedUser());
 
         logger.info("Loan account with ID {} approved successfully", loanId);
         return ResponseEntity.ok(new MessageResponse("Loan account approved successfully!"));
@@ -208,7 +229,7 @@ public class LoanController {
         }
         loan.setStatus(LoanStatus.REJECTED.getCode()); // 3 for rejected
         loan.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
-        loanRepository.updateStatusByLoanId(loan.getId(),loan.getStatus(), loan.getUpdatedUser());
+        loanRepository.updateStatusByLoanId(loan.getId(), loan.getStatus(), loan.getUpdatedUser());
 
         logger.info("Loan account with ID {} rejected successfully", loanId);
         return ResponseEntity.ok(new MessageResponse("Loan account rejected successfully!"));

@@ -31,6 +31,8 @@ public class Loan {
     @Column(name = "borrower_id", nullable = true)
     private Long borrowerId;
 
+    @Transient
+    private String  borrowerAcc;
 
     @NotNull
     @Column(length = 10)
@@ -44,6 +46,21 @@ public class Loan {
 
     @NotNull
     private Double loanAmount;
+
+    @Transient
+    private Double outstandingAmount;
+
+    @Transient
+    private Double totalAmount;
+
+    @Transient
+    private Double receivedAmount;
+
+    @Transient
+    private Integer receivedEmis;
+
+    @Transient
+    private Integer remainingEmis; // in months
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate emiStartDate;
@@ -115,6 +132,13 @@ public class Loan {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
         if(emiStartDate != null){
             return emiStartDate.format(formatter);
+        }
+        return null;
+    }
+
+    public String getBorrowerAcc() {
+        if(borrowerId != null){
+            return String.format("OD-%04d", borrowerId);
         }
         return null;
     }

@@ -16,6 +16,7 @@ import com.krunal.loan.security.jwt.JwtUtils;
 import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -63,15 +64,15 @@ public class EmiService {
         }
 
         List<Emi> emiSchedules = new ArrayList<>();
-        long emiAmount = Math.round(calculateEmiAmount(loanAmount, interestRate, loanDuration));
-        long remainingAmount = emiAmount * loanDuration;
+        double emiAmount = calculateEmiAmount(loanAmount, interestRate, loanDuration);
+        double remainingAmount = emiAmount * loanDuration;
         LocalDate emiDate = emiStartDate;
 
         for (int i = 1; i <= loanDuration; i++) {
             Emi emiSchedule = new Emi();
             emiSchedule.setEmiNo(i);
             emiSchedule.setEmiDate(emiDate);
-            emiSchedule.setEmiAmount((double) emiAmount);
+            emiSchedule.setEmiAmount(emiAmount);
             emiSchedule.setEmiReceivedAmount(0.0);
             emiSchedule.setLoanId(loanId);
             emiSchedule.setStatus(2L); // Upcoming
@@ -119,9 +120,9 @@ public class EmiService {
 
             double emiAmount = calculateEmiAmount(loanAmount, interestRate, numberOfEmis);
 
-            response.setLoanEmi(Math.round(emiAmount));
-            response.setTotalAmountPayable(Math.round(emiAmount * numberOfEmis));
-            response.setTotalInterestPayable(Math.round((emiAmount * numberOfEmis) - loanAmount));
+            response.setLoanEmi(emiAmount);
+            response.setTotalAmountPayable(emiAmount * numberOfEmis);
+            response.setTotalInterestPayable((emiAmount * numberOfEmis) - loanAmount);
 
             logger.info("EMI calculation successful. EMI Amount: {}, Total Amount Payable: {}, Total Interest Payable: {}", response.getLoanEmi(), response.getTotalAmountPayable(), response.getTotalInterestPayable());
         } catch (Exception e) {
@@ -278,5 +279,9 @@ public class EmiService {
             logger.error("Error occurred while processing payment for EMI ID: {}: {}", receivedPaymentReq.getEmiId(), e.getMessage());
             throw new LoanCustomException("Failed to process payment");
         }
+    }
+
+    public List<Object[]> findEmiSummaryByLoanId(Long loanId) {
+        return emiRepository.findEmiSummaryByLoanId(loanId);
     }
 }

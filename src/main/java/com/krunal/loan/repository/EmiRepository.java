@@ -18,4 +18,7 @@ public interface EmiRepository extends JpaRepository<Emi, Long> {
     List<Emi> findUpcomingEmis(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
     List<Emi> findByLoanIdOrderByEmiDateAsc(Long loanId);
+
+    @Query(value = "SELECT SUM(emi_received_amount) as receivedAmount, COUNT(*) as receivedEmis FROM emis WHERE status = 1 AND loan_id = :loanId", nativeQuery = true)
+    List<Object[]> findEmiSummaryByLoanId(@Param("loanId") Long loanId);
 }
