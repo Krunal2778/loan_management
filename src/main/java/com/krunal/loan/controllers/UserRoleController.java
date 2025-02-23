@@ -17,6 +17,7 @@ import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -74,7 +75,7 @@ public class UserRoleController {
         logger.info("Fetching user list");
         PartnerList partnerList = new PartnerList();
         try {
-            List<User> users = this.userRepository.findAll();
+            List<User> users = this.userRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
             List<User> activeUsers = new ArrayList<>();
             for (User user : users) {
                 Date date = user.getAddDate();

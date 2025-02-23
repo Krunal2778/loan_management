@@ -108,10 +108,10 @@ public class AuthController {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Username is already taken!"));
         }
 
-        if (Boolean.TRUE.equals(userRepository.existsByEmail(signUpRequest.getEmail()))) {
-            logger.warn("Email {} is already in use!", signUpRequest.getEmail());
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
-        }
+//        if (Boolean.TRUE.equals(userRepository.existsByEmail(signUpRequest.getEmail()))) {
+//            logger.warn("Email {} is already in use!", signUpRequest.getEmail());
+//            return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
+//        }
         if (signUpRequest.getPassword().length() <  6) {
             logger.warn("Password for username {} is too short!", signUpRequest.getUsername());
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Password must be at least 6 characters!"));

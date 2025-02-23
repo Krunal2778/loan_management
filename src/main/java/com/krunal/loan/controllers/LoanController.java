@@ -15,6 +15,7 @@ import com.krunal.loan.service.impl.EmiService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
@@ -139,7 +140,7 @@ public class LoanController {
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<Loan>> getAllLoans() {
         logger.info("Fetching all loans");
-        List<Loan> loans = loanRepository.findAll();
+        List<Loan> loans = loanRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
         return ResponseEntity.ok(loans);
     }
 
@@ -173,7 +174,7 @@ public class LoanController {
         if (loan == null) {
             return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_NOT_FOUND, loanId)));
         }
-        if (loan.getStatus() !=LoanStatus.PENDING.getCode()) {
+        if (!Objects.equals(loan.getStatus(), LoanStatus.PENDING.getCode())) {
             return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_STATUS_NOT_PENDING, loanId)));
         }
         loan.setStatus(LoanStatus.APPROVED.getCode()); // 1 for approved

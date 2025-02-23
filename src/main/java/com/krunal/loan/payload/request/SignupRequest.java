@@ -19,8 +19,6 @@ public class SignupRequest {
     @Size(max = 50, message = "Name must be at most 50 characters")
     private String name;
 
-    @Size(max = 50, message = "Email must be at most 50 characters")
-    @Email(message = "Email should be valid")
     private String email;
 
     private Set<String> role;

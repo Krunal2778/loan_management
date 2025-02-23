@@ -6,6 +6,7 @@ import com.krunal.loan.models.Loan;
 import com.krunal.loan.repository.BorrowerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,7 +24,7 @@ public class BorrowerService {
     @AddUserNames
     public List<Borrower> getAllBorrowersList(){
         logger.info("Fetching all borrowers");
-        List<Borrower> borrowers = borrowerRepository.findAll();
+        List<Borrower> borrowers = borrowerRepository.findAll(Sort.by(Sort.Direction.DESC, "borrowerId"));
         borrowers.forEach(borrower -> {
             borrower.setNoOfLoan(borrower.getLoans().size());
             borrower.setTotalLoanAmount(borrower.getLoans().stream()

@@ -13,6 +13,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -49,6 +50,9 @@ public class Borrower  {
 
 	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")  // 💡 Fix
 	private LocalDate dob;
+
+	@Transient
+	private String dobString;
 
 	@Size(max = 300)
 	private String notes;
@@ -106,5 +110,13 @@ public class Borrower  {
 	public String getStatusName() {
 		BorrowerStatus borrowerStatus = BorrowerStatus.fromCode(this.status);
 		return (borrowerStatus != null) ? borrowerStatus.getDisplayName() : "Unknown";
+	}
+
+	public String getDobString() {
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+		if(dob != null){
+			return dob.format(formatter);
+		}
+		return null;
 	}
 }

@@ -10,6 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Entity
@@ -62,6 +63,9 @@ public class Loan {
     @Transient
     private String statusName;
 
+    @Transient
+    private String emiStartDateString;
+
     @NotNull
     private Long paymentModeId;
 
@@ -105,5 +109,13 @@ public class Loan {
     public String getStatusName() {
         LoanStatus loanStatus = LoanStatus.fromCode(this.status);
         return (loanStatus != null) ? loanStatus.getDisplayName() : "Unknown";
+    }
+
+    public String getEmiStartDateString() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        if(emiStartDate != null){
+            return emiStartDate.format(formatter);
+        }
+        return null;
     }
 }

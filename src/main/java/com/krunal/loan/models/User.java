@@ -1,14 +1,12 @@
 package com.krunal.loan.models;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -16,8 +14,7 @@ import java.util.Set;
 @Entity
 @Table(name = "users",
 		uniqueConstraints = {
-				@UniqueConstraint(columnNames = "username"),
-				@UniqueConstraint(columnNames = "email")
+				@UniqueConstraint(columnNames = "username")
 		})
 @Data
 @NoArgsConstructor
@@ -35,7 +32,6 @@ public class User {
 	private String name;
 
 	@Size(max = 50)
-	@Email
 	private String email;
 
 	@NotBlank

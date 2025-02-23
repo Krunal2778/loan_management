@@ -12,6 +12,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
 @Entity
@@ -27,6 +28,9 @@ public class Emi {
     @NotNull
     @Column(name = "loan_id", nullable = true)
     private Long loanId;
+
+    @Transient
+    private String loanAccount;
 
     @NotNull
     private Integer emiNo;
@@ -80,6 +84,9 @@ public class Emi {
     @Transient
     private String updateUserName;
 
+    @Transient
+    private String emiDateString;
+
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate emiReceivedDate;
 
@@ -103,5 +110,20 @@ public class Emi {
     public String getStatusName() {
        EmiStatus emiStatus = EmiStatus.fromCode(this.status);
         return (emiStatus != null) ? emiStatus.getDisplayName() : "Unknown";
+    }
+
+    public String getEmiDateString() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        if(emiDate != null){
+            return emiDate.format(formatter);
+        }
+        return null;
+    }
+
+    public String getLoanAccount() {
+        if(loanId != null){
+            return String.format("LN-%07d", loanId);
+        }
+        return null;
     }
 }
