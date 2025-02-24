@@ -4,11 +4,13 @@ import com.krunal.loan.common.DateUtils;
 import com.krunal.loan.common.S3BucketUtils;
 import com.krunal.loan.exception.LoanCustomException;
 import com.krunal.loan.models.Emi;
+import com.krunal.loan.models.EmiStatus;
 import com.krunal.loan.payload.request.CalculateContributionReq;
 import com.krunal.loan.payload.request.EmiCalculationRequest;
 import com.krunal.loan.payload.request.EmiUpdateReq;
 import com.krunal.loan.payload.response.ContributionResponse;
 import com.krunal.loan.payload.response.EmiCalculationResponse;
+import com.krunal.loan.payload.response.EmiListByDateResponse;
 import com.krunal.loan.service.impl.EmiService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -58,24 +60,30 @@ public class EmiController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/upcoming")
-    public ResponseEntity<List<Emi>> getUpcomingEmis(
+    @GetMapping("/emi-list-by-date")
+    public ResponseEntity<EmiListByDateResponse> getEmiListByDateResponse(
             @RequestParam("startDate") @DateTimeFormat(pattern = "dd-MM-yyyy") String startDate,
             @RequestParam("endDate") @DateTimeFormat(pattern = "dd-MM-yyyy") String endDate) {
-        logger.info("Received request to get upcoming EMIs between {} and {}", startDate, endDate);
+        logger.info("Received request to get EMIs between {} and {}", startDate, endDate);
         try {
             LocalDate localDateStart = DateUtils.getDateFromString(startDate, DateUtils.YMD);
             LocalDate localDateEnd = DateUtils.getDateFromString(endDate, DateUtils.YMD);
-            Long statusId = 2L; // Upcoming
-
-            List<Emi> upcomingEmis = emiService.filterEmisBetweenDates(localDateStart, localDateEnd, statusId);
-            logger.info("Found {} upcoming EMIs", upcomingEmis.size());
-            return ResponseEntity.ok(upcomingEmis);
+            EmiListByDateResponse response =new EmiListByDateResponse();
+            List<Emi> upcomingEmis = emiService.filterEmisBetweenDates(localDateStart, localDateEnd, EmiStatus.PENDING.getCode());
+            logger.info("Found upcoming {} EMIs", upcomingEmis.size());
+            response.setUpcomingEmis(upcomingEmis);
+            List<Emi> receivedEmis = emiService.filterEmisBetweenDates(localDateStart, localDateEnd, EmiStatus.APPROVED.getCode());
+            logger.info("Found received {} EMIs", receivedEmis.size());
+            response.setReceivedEmis(receivedEmis);
+            List<Emi> bouncedEmis = emiService.filterEmisBetweenDates(localDateStart, localDateEnd, EmiStatus.FAILED.getCode());
+            logger.info("Found bounced {} EMIs", bouncedEmis.size());
+            response.setBouncedEmis(bouncedEmis);
+            return ResponseEntity.ok(response);
         } catch (LoanCustomException e) {
-            logger.error("Error fetching upcoming EMIs between {} and {}: {}", startDate, endDate, e.getMessage());
+            logger.error("Error fetching EMIs between {} and {}: {}", startDate, endDate, e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         } catch (Exception e) {
-            logger.error("Unexpected error fetching upcoming EMIs between {} and {}: {}", startDate, endDate, e.getMessage());
+            logger.error("Unexpected error fetching  EMIs between {} and {}: {}", startDate, endDate, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }

@@ -5,6 +5,7 @@ import com.krunal.loan.common.S3BucketUtils;
 import com.krunal.loan.exception.FileUploadException;
 import com.krunal.loan.exception.LoanCustomException;
 import com.krunal.loan.models.Emi;
+import com.krunal.loan.models.EmiStatus;
 import com.krunal.loan.payload.request.CalculateContributionReq;
 import com.krunal.loan.payload.request.EmiCalculationRequest;
 import com.krunal.loan.payload.request.EmiScheduleRequest;
@@ -19,6 +20,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -75,10 +78,10 @@ public class EmiService {
             emiSchedule.setEmiAmount(emiAmount);
             emiSchedule.setEmiReceivedAmount(0.0);
             emiSchedule.setLoanId(loanId);
-            emiSchedule.setStatus(2L); // Upcoming
+            emiSchedule.setStatus(EmiStatus.PENDING.getCode());
             emiSchedule.setAddUser(jwtUtils.getLoggedInUserDetails().getId());
             remainingAmount -= emiAmount;
-            emiSchedule.setRemainingAmount((double) remainingAmount);
+            emiSchedule.setRemainingAmount(remainingAmount);
             emiSchedule.setEmiDate(emiDate);
             emiDate = emiDate.plusMonths(1);
             emiSchedules.add(emiSchedule);
@@ -92,21 +95,43 @@ public class EmiService {
     // Reducing balance formula
     public Double calculateEmiReducingBalAmt(@NotNull Double loanAmount, @NotNull Double interestRate, @NotNull Integer loanDuration) {
         logger.debug("Calculating EMI amount for loanAmount: {}, interestRate: {}, loanDuration: {}", loanAmount, interestRate, loanDuration);
-        double emiAmount;
+
+        // Calculate the monthly interest rate
         Double monthlyInterestRate = interestRate / 100 / 12;
-        emiAmount = (loanAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, loanDuration)) / (Math.pow(1 + monthlyInterestRate, loanDuration) - 1);
-        logger.debug("Calculated EMI amount: {}", emiAmount);
-        return emiAmount;
+
+        // Calculate the EMI using the formula
+        double emiAmount = (loanAmount * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, loanDuration))
+                / (Math.pow(1 + monthlyInterestRate, loanDuration) - 1);
+
+        // Round the EMI amount to 2 decimal places
+        BigDecimal roundedEmiAmount = BigDecimal.valueOf(emiAmount).setScale(2, RoundingMode.HALF_UP);
+
+        logger.debug("Calculated EMI amount: {}", roundedEmiAmount);
+
+        // Return the rounded EMI amount
+        return roundedEmiAmount.doubleValue();
     }
 
     // Flat rate formula
     private Double calculateEmiAmount(@NotNull Double loanAmount, @NotNull Double interestRate, @NotNull Integer loanDuration) {
         logger.debug("Calculating EMI amount using flat rate formula for loanAmount: {}, interestRate: {}, loanDuration: {}", loanAmount, interestRate, loanDuration);
+
+        // Calculate total interest
         double totalInterest = loanAmount * (interestRate / 100) * (loanDuration / 12.0);
+
+        // Calculate total amount (principal + interest)
         double totalAmount = loanAmount + totalInterest;
+
+        // Calculate EMI amount
         double emiAmount = totalAmount / loanDuration;
-        logger.debug("Calculated EMI amount using flat rate formula: {}", emiAmount);
-        return emiAmount;
+
+        // Round the EMI amount to 2 decimal places
+        BigDecimal roundedEmiAmount = BigDecimal.valueOf(emiAmount).setScale(2, RoundingMode.HALF_UP);
+
+        logger.debug("Calculated EMI amount using flat rate formula: {}", roundedEmiAmount);
+
+        // Return the rounded EMI amount
+        return roundedEmiAmount.doubleValue();
     }
 
     public EmiCalculationResponse calculateEmi(EmiCalculationRequest emiCalculationRequest) {
@@ -118,13 +143,27 @@ public class EmiService {
 
             logger.info("Calculating EMI for loanAmount: {}, interestRate: {}, numberOfEmis: {}", loanAmount, interestRate, numberOfEmis);
 
+            // Calculate EMI amount
             double emiAmount = calculateEmiAmount(loanAmount, interestRate, numberOfEmis);
 
-            response.setLoanEmi(emiAmount);
-            response.setTotalAmountPayable(emiAmount * numberOfEmis);
-            response.setTotalInterestPayable((emiAmount * numberOfEmis) - loanAmount);
+            // Round EMI amount to 2 decimal places
+            BigDecimal roundedEmiAmount = BigDecimal.valueOf(emiAmount).setScale(2, RoundingMode.HALF_UP);
 
-            logger.info("EMI calculation successful. EMI Amount: {}, Total Amount Payable: {}, Total Interest Payable: {}", response.getLoanEmi(), response.getTotalAmountPayable(), response.getTotalInterestPayable());
+            // Calculate total amount payable and round to 2 decimal places
+            BigDecimal totalAmountPayable = BigDecimal.valueOf(roundedEmiAmount.doubleValue() * numberOfEmis)
+                    .setScale(2, RoundingMode.HALF_UP);
+
+            // Calculate total interest payable and round to 2 decimal places
+            BigDecimal totalInterestPayable = BigDecimal.valueOf(totalAmountPayable.doubleValue() - loanAmount)
+                    .setScale(2, RoundingMode.HALF_UP);
+
+            // Set values in the response object
+            response.setLoanEmi(roundedEmiAmount.doubleValue());
+            response.setTotalAmountPayable(totalAmountPayable.doubleValue());
+            response.setTotalInterestPayable(totalInterestPayable.doubleValue());
+
+            logger.info("EMI calculation successful. EMI Amount: {}, Total Amount Payable: {}, Total Interest Payable: {}",
+                    response.getLoanEmi(), response.getTotalAmountPayable(), response.getTotalInterestPayable());
         } catch (Exception e) {
             logger.error("Error occurred while calculating EMI: {}", e.getMessage());
             throw new LoanCustomException("Failed to calculate EMI");
@@ -133,7 +172,6 @@ public class EmiService {
     }
 
     public ContributionResponse calculateContribution(CalculateContributionReq contributionReq) {
-
         double loanAmount = contributionReq.getLoanAmount();
         double contributeAmount = contributionReq.getContributeAmount();
         double interestRate = contributionReq.getInterestRate();
@@ -142,6 +180,7 @@ public class EmiService {
         logger.info("Calculating contribution for loanAmount: {}, contributeAmount: {}, interestRate: {}, loanDuration: {}",
                 loanAmount, contributeAmount, interestRate, loanDuration);
 
+        // Input validation
         if (loanAmount <= 0) {
             logger.error("Invalid loan amount: {}", loanAmount);
             throw new IllegalArgumentException("Loan amount must be greater than zero");
@@ -159,15 +198,21 @@ public class EmiService {
             throw new IllegalArgumentException("Loan duration must be greater than zero");
         }
 
+        // Calculate percentage share and round to 2 decimal places
         double percentageShare = (contributeAmount / loanAmount) * 100;
-        double expectedProfit = contributeAmount * (interestRate / 100) * (loanDuration / 12.0);
+        BigDecimal roundedPercentageShare = BigDecimal.valueOf(percentageShare).setScale(2, RoundingMode.HALF_UP);
 
+        // Calculate expected profit and round to 2 decimal places
+        double expectedProfit = contributeAmount * (interestRate / 100) * (loanDuration / 12.0);
+        BigDecimal roundedExpectedProfit = BigDecimal.valueOf(expectedProfit).setScale(2, RoundingMode.HALF_UP);
+
+        // Set values in the response object
         ContributionResponse response = new ContributionResponse();
-        response.setPercentageShare(percentageShare);
-        response.setExpectedProfit(expectedProfit);
+        response.setPercentageShare(roundedPercentageShare.doubleValue());
+        response.setExpectedProfit(roundedExpectedProfit.doubleValue());
 
         logger.info("Contribution calculated successfully. Percentage Share: {}, Expected Profit: {}",
-                percentageShare, expectedProfit);
+                roundedPercentageShare, roundedExpectedProfit);
 
         return response;
     }
@@ -194,33 +239,33 @@ public class EmiService {
             List<Emi> allEmis = emiRepository.findAll();
             if (allEmis.isEmpty()) {
                 logger.error("No EMIs found");
-                throw new LoanCustomException("No EMIs found");
+            } else {
+                logger.info("Found {} EMIs", allEmis.size());
             }
-            logger.info("Found {} EMIs", allEmis.size());
             return allEmis;
         } catch (Exception e) {
             logger.error("Error occurred while fetching all EMIs: {}", e.getMessage());
-            throw new LoanCustomException("Failed to fetch all EMIs");
+            return new ArrayList<>();
         }
     }
 
-    public List<Emi> filterEmisBetweenDates(LocalDate startDate, LocalDate endDate, Long status) {
-        logger.info("Filtering EMIs between {} and {} with status {}", startDate, endDate, status);
-        try {
-            List<Emi> filteredEmis = emiRepository.findAll().stream()
-                    .filter(emi -> !emi.getEmiDate().isBefore(startDate) && !emi.getEmiDate().isAfter(endDate) && emi.getStatus().equals(status))
-                    .sorted(Comparator.comparing(Emi::getEmiDate)).toList();
-            if (filteredEmis.isEmpty()) {
-                logger.error("No EMIs found between {} and {} with status {}", startDate, endDate, status);
-                throw new LoanCustomException("No EMIs found between " + startDate + " and " + endDate + " with status " + status);
-            }
-            logger.info("Found {} EMIs between {} and {} with status {}", filteredEmis.size(), startDate, endDate, status);
-            return filteredEmis;
-        } catch (Exception e) {
-            logger.error("Error occurred while filtering EMIs: {}", e.getMessage());
-            throw new LoanCustomException("Failed to filter EMIs");
-        }
-    }
+   public List<Emi> filterEmisBetweenDates(LocalDate startDate, LocalDate endDate, Long status) {
+       logger.info("Filtering EMIs between {} and {} with status {}", startDate, endDate, status);
+       try {
+           List<Emi> filteredEmis = emiRepository.findAll().stream()
+                   .filter(emi -> !emi.getEmiDate().isBefore(startDate) && !emi.getEmiDate().isAfter(endDate) && emi.getStatus().equals(status))
+                   .sorted(Comparator.comparing(Emi::getEmiDate)).toList();
+           if (filteredEmis.isEmpty()) {
+               logger.error("No EMIs found between {} and {} with status {}", startDate, endDate, status);
+           } else {
+               logger.info("Found {} EMIs between {} and {} with status {}", filteredEmis.size(), startDate, endDate, status);
+           }
+           return filteredEmis;
+       } catch (Exception e) {
+           logger.error("Error occurred while filtering EMIs: {}", e.getMessage());
+           return new ArrayList<>();
+       }
+   }
 
     public List<Emi> findByLoanIdOrderByEmiDateAsc(Long loanId) {
         logger.info("Fetching EMIs for loan ID: {}", loanId);

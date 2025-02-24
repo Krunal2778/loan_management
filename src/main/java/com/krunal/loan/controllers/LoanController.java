@@ -1,5 +1,6 @@
 package com.krunal.loan.controllers;
 
+import com.krunal.loan.aspect.AddUserNames;
 import com.krunal.loan.common.DateUtils;
 import com.krunal.loan.models.Loan;
 import com.krunal.loan.models.LoanContributor;
@@ -21,6 +22,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 
 @CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
@@ -31,6 +34,7 @@ public class LoanController {
     private static final Logger logger = LoggerFactory.getLogger(LoanController.class);
     private static final String LOAN_NOT_FOUND = "Loan not found with ID: %d";
     private static final String LOAN_STATUS_NOT_PENDING = "Loan status can only be updated when the status is pending for ID: %d";
+    private static final String LOAN_STATUS_NOT_PENDING_FOR_DELETE = "Loan can only be deleted when the status is pending for ID: %d";
     private final LoanRepository loanRepository;
     private final JwtUtils jwtUtils;
     private final EmiService emiService;
@@ -126,29 +130,56 @@ public class LoanController {
 
     @GetMapping("/{loanId}")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
+    @AddUserNames
     public ResponseEntity<?> getLoanAccountById(@PathVariable Long loanId) {
         logger.info("Fetching loan account with ID: {}", loanId);
 
         try {
+            // Fetch loan account by ID
             Loan loan = loanRepository.findById(loanId).orElse(null);
             if (loan == null) {
                 logger.warn("Loan not found with ID: {}", loanId);
                 return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_NOT_FOUND, loanId)));
             }
 
+            // Fetch EMI summary for the loan
             List<Object[]> results = emiService.findEmiSummaryByLoanId(loanId);
             if (results != null && !results.isEmpty()) {
                 Object[] result = results.getFirst();
-                double receivedAmount = result[0] != null ? ((Number) result[0]).doubleValue() : 0.0;
-                Integer receivedEmis = result[1] != null ? ((Number) result[1]).intValue() : 0;
-                loan.setReceivedAmount(receivedAmount);
-                loan.setReceivedEmis(receivedEmis);
-                loan.setExpectedProfit(loan.getExpectedProfit());
-                loan.setRemainingEmis(loan.getLoanDuration() - loan.getReceivedEmis());
-                loan.setTotalAmount(loan.getLoanDuration() * loan.getEmpPerMonth());
-                loan.setOutstandingAmount(loan.getTotalAmount() - loan.getReceivedAmount());
-            }
 
+                // Extract received amount and received EMIs
+                double receivedAmount = result[0] != null ? ((Number) result[0]).doubleValue() : 0.0;
+                int receivedEmis = result[1] != null ? ((Number) result[1]).intValue() : 0;
+
+                // Round received amount to 2 decimal places
+                BigDecimal roundedReceivedAmount = BigDecimal.valueOf(receivedAmount).setScale(2, RoundingMode.HALF_UP);
+
+                // Set values in the loan object
+                loan.setReceivedAmount(roundedReceivedAmount.doubleValue());
+                loan.setReceivedEmis(receivedEmis);
+
+                // Calculate and round expected profit
+                BigDecimal expectedProfit = BigDecimal.valueOf(loan.getExpectedProfit()).setScale(2, RoundingMode.HALF_UP);
+                loan.setExpectedProfit(expectedProfit.doubleValue());
+
+                // Calculate remaining EMIs
+                loan.setRemainingEmis(loan.getLoanDuration() - loan.getReceivedEmis());
+
+                // Calculate and round total amount
+                BigDecimal totalAmount = BigDecimal.valueOf(loan.getLoanDuration() * loan.getEmpPerMonth())
+                        .setScale(2, RoundingMode.HALF_UP);
+                loan.setTotalAmount(totalAmount.doubleValue());
+
+                // Calculate and round outstanding amount
+                BigDecimal outstandingAmount = BigDecimal.valueOf(totalAmount.doubleValue() - roundedReceivedAmount.doubleValue())
+                        .setScale(2, RoundingMode.HALF_UP);
+                loan.setOutstandingAmount(outstandingAmount.doubleValue());
+            }
+            loan.getLoanContributors().forEach(lb ->{
+                lb.setLoanAccount(loan.getLoanAccount());
+                lb.setLoanDuration(loan.getLoanDuration());
+            });
+            loan.getEmis().forEach(emi -> emi.setRemainingAmount(BigDecimal.valueOf(emi.getRemainingAmount()).setScale(2, RoundingMode.HALF_UP).doubleValue()));
             logger.info("Loan account with ID: {} fetched successfully", loanId);
             return ResponseEntity.ok(loan);
         } catch (Exception e) {
@@ -177,7 +208,7 @@ public class LoanController {
             return ResponseEntity.badRequest().body(new MessageResponse(message));
         }
         if (!Objects.equals(loanOptional.get().getStatus(), LoanStatus.PENDING.getCode())) {
-            return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_STATUS_NOT_PENDING, loanId)));
+            return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_STATUS_NOT_PENDING_FOR_DELETE, loanId)));
         }
         loanRepository.deleteById(loanId);
         logger.info("Loan account with ID {} deleted successfully", loanId);
@@ -267,7 +298,6 @@ public class LoanController {
         return loan;
     }
 
-    // Method to calculate expected profit
     private Double calculateExpectedProfit(CreateLoanAccountRequest loanAccountRequest) {
         Double loanAmount = loanAccountRequest.getLoanAmount();
         Double annualInterestRate = loanAccountRequest.getInterestRate();
@@ -277,6 +307,11 @@ public class LoanController {
         Double monthlyInterestRate = annualInterestRate / 12;
 
         // Simple interest calculation
-        return loanAmount * monthlyInterestRate * loanDurationInMonths / 100;
+        double expectedProfit = loanAmount * monthlyInterestRate * loanDurationInMonths / 100;
+
+        // Round the expected profit to 2 decimal places
+        BigDecimal roundedExpectedProfit = BigDecimal.valueOf(expectedProfit).setScale(2, RoundingMode.HALF_UP);
+
+        return roundedExpectedProfit.doubleValue();
     }
 }

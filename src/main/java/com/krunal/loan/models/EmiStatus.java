@@ -4,11 +4,10 @@ import lombok.Getter;
 
 @Getter
 public enum EmiStatus {
-    RECEIVED(1L, "Received"),
-    UPCOMING(2L, "Upcoming"),
-    PENDING(3L, "Pending"),
-    BOUNCE(4L, "Bounce"),
-    FORECLOSED(5L, "Foreclosed");
+    APPROVED(1L, "Approved"),
+    PENDING(2L, "Pending"),
+    FAILED(3L, "Failed"),
+    FORECLOSED(4L, "Foreclosed");
 
     private final Long code;
     private final String displayName;
