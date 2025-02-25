@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 
 @RestController
@@ -70,12 +71,15 @@ public class EmiController {
             LocalDate localDateEnd = DateUtils.getDateFromString(endDate, DateUtils.YMD);
             EmiListByDateResponse response =new EmiListByDateResponse();
             List<Emi> upcomingEmis = emiService.filterEmisBetweenDates(localDateStart, localDateEnd, EmiStatus.PENDING.getCode());
+            upcomingEmis.sort(Comparator.comparing(Emi::getEmiDate));
             logger.info("Found upcoming {} EMIs", upcomingEmis.size());
             response.setUpcomingEmis(upcomingEmis);
             List<Emi> receivedEmis = emiService.filterEmisBetweenDates(localDateStart, localDateEnd, EmiStatus.APPROVED.getCode());
+            receivedEmis.sort(Comparator.comparing(Emi::getEmiDate).reversed());
             logger.info("Found received {} EMIs", receivedEmis.size());
             response.setReceivedEmis(receivedEmis);
             List<Emi> bouncedEmis = emiService.filterEmisBetweenDates(localDateStart, localDateEnd, EmiStatus.FAILED.getCode());
+            bouncedEmis.sort(Comparator.comparing(Emi::getEmiDate).reversed());
             logger.info("Found bounced {} EMIs", bouncedEmis.size());
             response.setBouncedEmis(bouncedEmis);
             return ResponseEntity.ok(response);

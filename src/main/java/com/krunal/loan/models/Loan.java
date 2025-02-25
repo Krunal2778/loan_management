@@ -34,6 +34,9 @@ public class Loan {
     @Transient
     private String  borrowerAcc;
 
+    @Transient
+    private String  borrowerName;
+
     @NotNull
     @Column(length = 10)
     private String loanAccount;
