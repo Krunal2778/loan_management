@@ -11,6 +11,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
@@ -87,6 +89,9 @@ public class Emi {
     @Transient
     private String emiDateString;
 
+    @Transient
+    private String emiReceivedDateString;
+
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate emiReceivedDate;
 
@@ -120,10 +125,28 @@ public class Emi {
         return null;
     }
 
+    public String getEmiReceivedDateString() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        if(emiReceivedDate != null){
+            return emiReceivedDate.format(formatter);
+        }
+        return null;
+    }
+
     public String getLoanAccount() {
         if(loanId != null){
             return String.format("LN-%07d", loanId);
         }
         return null;
     }
+
+    public Double getRemainingAmount() {
+        if (remainingAmount != null) {
+            return BigDecimal.valueOf(remainingAmount)
+                    .setScale(2, RoundingMode.HALF_UP)
+                    .doubleValue();
+        }
+        return null;
+    }
+
 }
