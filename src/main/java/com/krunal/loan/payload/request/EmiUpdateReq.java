@@ -21,11 +21,8 @@ public class EmiUpdateReq {
     @NotNull(message = "EMI ID is required")
     private Long emiId;
 
-    @NotNull(message = "Amount received is required")
-    @Positive(message = "Amount received must be positive")
     private Double amountReceivedAmount;
 
-    @NotNull(message = "Payment type is required")
     private Long paymentType;
 
     @Size(max = 300, message = "Notes must be less than 300 characters")
@@ -41,7 +38,6 @@ public class EmiUpdateReq {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
     private String emiDate;
 
-    @NotNull(message = "Payment received date is required")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
     private String paymentReceivedDate;
 }
