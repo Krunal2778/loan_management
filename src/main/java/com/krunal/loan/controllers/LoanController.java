@@ -229,7 +229,7 @@ public class LoanController {
         if (!Objects.equals(loan.getStatus(), LoanStatus.PENDING.getCode())) {
             return ResponseEntity.badRequest().body(new MessageResponse(String.format(LOAN_STATUS_NOT_PENDING, loanId)));
         }
-        loan.setStatus(LoanStatus.APPROVED.getCode()); // 1 for approved
+        loan.setStatus(LoanStatus.ACTIVE.getCode()); // 1 for approved
         loan.setUpdatedUser(jwtUtils.getLoggedInUserDetails().getId());
 
         EmiScheduleRequest scheduleRequest = new EmiScheduleRequest();

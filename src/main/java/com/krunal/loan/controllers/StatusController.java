@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,6 +29,7 @@ public class StatusController {
     }
 
     @GetMapping("/payment-mode")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<PaymentMode>> getPaymentModes() {
         logger.info("Received request to get payment modes");
         try {
@@ -41,6 +43,7 @@ public class StatusController {
     }
 
     @GetMapping("/emi")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<UserStatus>> getEmiStatusList() {
         logger.info("Received request to get EMI status list");
         try {
@@ -56,6 +59,7 @@ public class StatusController {
     }
 
     @GetMapping("/partner")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<UserStatus>> getPartnersList() {
         logger.info("Received request to get partner status list");
         try {
@@ -71,6 +75,7 @@ public class StatusController {
     }
 
     @GetMapping("/borrower")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<UserStatus>> getBorrowersStatusList() {
         logger.info("Received request to get borrower status list");
         try {
@@ -86,6 +91,7 @@ public class StatusController {
     }
 
     @GetMapping("/loan")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<UserStatus>> getLoanStatusList() {
         logger.info("Received request to get loan status list");
         try {

@@ -10,7 +10,8 @@ INSERT INTO taxpayers.user_status (status_id,status_name,status_type) VALUES
 	 (3,'Failed','EMI'),
 	 (4,'Foreclosed','EMI');
 INSERT INTO taxpayers.user_status (status_id,status_name,status_type) VALUES
-	 (1,'Approved','LOAN'),
+	 (1,'Active','LOAN'),
 	 (2,'Pending','LOAN'),
 	 (3,'Rejected','LOAN'),
-	 (4,'Defaulter','LOAN');
+	 (4,'Defaulter','LOAN'),
+	 (5,'Closed','LOAN');

@@ -4,10 +4,11 @@ import lombok.Getter;
 
 @Getter
 public enum LoanStatus {
-    APPROVED(1L, "Approved"),
+    ACTIVE(1L, "Active"),
     PENDING(2L, "Pending"),
     REJECTED(3L, "Rejected"),
-    DEFAULTER(4L, "Defaulter");
+    DEFAULTER(4L, "Defaulter"),
+    CLOSED(4L, "Closed");
 
     private final Long code;
     private final String displayName;

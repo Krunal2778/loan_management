@@ -4,6 +4,8 @@ import com.krunal.loan.common.S3BucketUtils;
 import com.krunal.loan.exception.*;
 import com.krunal.loan.models.*;
 import com.krunal.loan.payload.request.ChangePasswordRequest;
+import com.krunal.loan.payload.request.ChangePasswordWithOldRequest;
+import com.krunal.loan.payload.request.ResetPasswordRequest;
 import com.krunal.loan.payload.request.UpdateRoleRequest;
 import com.krunal.loan.payload.response.ContributorSummary;
 import com.krunal.loan.payload.response.MessageResponse;
@@ -186,11 +188,12 @@ public class UserRoleController {
             throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
         }
     }
+
     @GetMapping("/user-details/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PartnerDetail> getUserDetailsById(@PathVariable Long id) {
         logger.info("Fetching user details for ID: {}", id);
-        PartnerDetail partnerDetail =new PartnerDetail();
+        PartnerDetail partnerDetail = new PartnerDetail();
         Optional<User> userOptional = this.userRepository.findById(id);
         if (userOptional.isPresent()) {
             userOptional.ifPresent(user -> {
@@ -234,31 +237,66 @@ public class UserRoleController {
         }
     }
 
-    @PutMapping("/change-password")
+    @PutMapping("/reset-password")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<MessageResponse> changePassword( @RequestBody ChangePasswordRequest changePassword) {
-        logger.info("Changing password for user with ID: {}", changePassword.getId());
+    public ResponseEntity<MessageResponse> resetPassword(@RequestBody ResetPasswordRequest resetPassword) {
+        logger.info("Resetting password for user with ID: {}", resetPassword.getId());
 
-        if (changePassword.getNewPassword().length() < 6) {
-            logger.warn("Password for username {} is too short!", changePassword.getId());
+        if (resetPassword.getNewPassword().length() < 6) {
+            logger.warn("Password for user ID {} is too short!", resetPassword.getId());
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Password must be at least 6 characters!"));
         }
 
         try {
-            Optional<User> userOptional = this.userRepository.findById(changePassword.getId());
+            Optional<User> userOptional = this.userRepository.findById(resetPassword.getId());
             if (userOptional.isPresent()) {
                 User user = userOptional.get();
 
-                user.setPassword(encoder.encode(changePassword.getNewPassword()));
-                this.userRepository.save(user);
-                return ResponseEntity.ok(new MessageResponse("Password changed successfully!"));
+                user.setPassword(encoder.encode(resetPassword.getNewPassword()));
+                this.userRepository.updatePasswordById(user.getId(), user.getPassword());
+                logger.info("Password reset successfully for user ID: {}", resetPassword.getId());
+                return ResponseEntity.ok(new MessageResponse("Password reset successfully!"));
             } else {
-                logger.warn(USER_NOT_FOUND_WITH_ID, changePassword.getId());
+                logger.warn(USER_NOT_FOUND_WITH_ID, resetPassword.getId());
                 throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
             }
         } catch (Exception e) {
-            logger.error("Error changing password for user with ID: {}", changePassword.getId(), e);
-            throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
+            logger.error("Error resetting password for user with ID: {}", resetPassword.getId(), e);
+            return ResponseEntity.status(500).body(new MessageResponse("Error: Unable to reset password."));
+        }
+    }
+
+    @PutMapping("/change-password/{id}")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
+    public ResponseEntity<MessageResponse> changePasswordById(@PathVariable Long id, @Valid @RequestBody ChangePasswordWithOldRequest changePasswordRequest) {
+        logger.info("Changing password for user with ID: {}", id);
+
+        if (changePasswordRequest.getNewPassword().length() < 6) {
+            logger.warn("New password for user ID {} is too short!", id);
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: New password must be at least 6 characters!"));
+        }
+
+        try {
+            Optional<User> userOptional = this.userRepository.findById(id);
+            if (userOptional.isPresent()) {
+                User user = userOptional.get();
+
+                if (!encoder.matches(changePasswordRequest.getOldPassword(), user.getPassword())) {
+                    logger.warn("Old password does not match for user ID: {}", id);
+                    return ResponseEntity.badRequest().body(new MessageResponse("Error: Old password does not match! Please contact the admin to reset the password."));
+                }
+
+                user.setPassword(encoder.encode(changePasswordRequest.getNewPassword()));
+                this.userRepository.save(user);
+                logger.info("Password changed successfully for user ID: {}", id);
+                return ResponseEntity.ok(new MessageResponse("Password changed successfully!"));
+            } else {
+                logger.warn(USER_NOT_FOUND_WITH_ID, id);
+                throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
+            }
+        } catch (Exception e) {
+            logger.error("Error changing password for user with ID: {}", id, e);
+            return ResponseEntity.status(500).body(new MessageResponse("Error: Unable to change password."));
         }
     }
 

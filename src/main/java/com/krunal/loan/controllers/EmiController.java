@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -41,6 +42,7 @@ public class EmiController {
     }
 
     @PostMapping("/calculate")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<EmiCalculationResponse> calculateEmi(@Valid @RequestBody EmiCalculationRequest emiCalculationRequest) {
         logger.info("Received EMI calculation request: {}", emiCalculationRequest);
 
@@ -52,6 +54,7 @@ public class EmiController {
 
 
     @PostMapping("/calculate-contributor-share")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<ContributionResponse> calculateContributorShare(@Valid @RequestBody CalculateContributionReq request) {
         logger.info("Received contributor share calculation request: {}", request);
 
@@ -62,6 +65,7 @@ public class EmiController {
     }
 
     @GetMapping("/emi-list-by-date")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<EmiListByDateResponse> getEmiListByDateResponse(
             @RequestParam("startDate") @DateTimeFormat(pattern = "dd-MM-yyyy") String startDate,
             @RequestParam("endDate") @DateTimeFormat(pattern = "dd-MM-yyyy") String endDate) {
@@ -93,6 +97,7 @@ public class EmiController {
     }
 
     @GetMapping("/emi-list-by-loan-id/{loanId}")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<List<Emi>> getEmisByLoanId(@PathVariable Long loanId) {
         logger.info("Received request to get EMIs for loan ID: {}", loanId);
         try {
@@ -109,6 +114,7 @@ public class EmiController {
     }
 
     @GetMapping("/emi-list-by-id/{id}")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<Emi> getEmiById(@PathVariable Long id) {
         logger.info("Received request to get EMI by ID: {}", id);
         try {
@@ -128,6 +134,7 @@ public class EmiController {
     }
 
     @PostMapping("/update-emi")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     public ResponseEntity<String> receivePayment(@Valid @RequestBody EmiUpdateReq receivedPaymentReq) {
         logger.info("Received payment request: {}", receivedPaymentReq);
         try {
