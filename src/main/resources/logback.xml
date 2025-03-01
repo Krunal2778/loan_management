@@ -1,6 +1,6 @@
 <configuration>
     <!-- Define the pattern for log messages -->
-    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss} - %msg%n"/>
+    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level - %msg%n"/>
 
     <!-- Define the base directory for log files -->
     <property name="LOG_DIR" value="${user.home}/logs"/>
@@ -10,7 +10,7 @@
         <file>${LOG_DIR}/loan_application.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- Daily rollover -->
-            <fileNamePattern>${LOG_DIR}/loan_application.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>${LOG_DIR}/loan_application_%d{yyyy-MM-dd}.log</fileNamePattern>
             <!-- Keep 30 days' worth of history -->
             <maxHistory>30</maxHistory>
         </rollingPolicy>
@@ -19,8 +19,24 @@
         </encoder>
     </appender>
 
-    <!-- Root logger level and appender -->
+    <!-- Appender for logging to the console -->
+<!--    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">-->
+<!--        <encoder>-->
+<!--            <pattern>${LOG_PATTERN}</pattern>-->
+<!--        </encoder>-->
+<!--    </appender>-->
+
+<!--    &lt;!&ndash; Root logger level and appenders (only file logging) &ndash;&gt;-->
+<!--    <root level="info">-->
+<!--        <appender-ref ref="FILE"/>-->
+<!--         <appender-ref ref="CONSOLE"/>-->
+<!--        &lt;!&ndash; Commented out to disable console logging &ndash;&gt;-->
+<!--    </root>-->
+
+    <!-- Only print file-->
     <root level="info">
         <appender-ref ref="FILE"/>
     </root>
+
+
 </configuration>
