@@ -3,7 +3,6 @@ package com.krunal.loan.controllers;
 import com.krunal.loan.common.S3BucketUtils;
 import com.krunal.loan.exception.*;
 import com.krunal.loan.models.*;
-import com.krunal.loan.payload.request.ChangePasswordRequest;
 import com.krunal.loan.payload.request.ChangePasswordWithOldRequest;
 import com.krunal.loan.payload.request.ResetPasswordRequest;
 import com.krunal.loan.payload.request.UpdateRoleRequest;
@@ -107,13 +106,13 @@ public class UserRoleController {
         }
     }
 
-    @PutMapping("/update-user")
+    @PutMapping("/update-user/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
-    public ResponseEntity<User> updateUser(@Valid @RequestBody UpdateRoleRequest user) {
-        logger.info("Updating user with username: {}", user.getUsername());
+    public ResponseEntity<User> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateRoleRequest user) {
+        logger.info("Updating user by  id : {}", id);
         try {
-            Optional<User> userOptional = this.userRepository.findByUsername(user.getUsername());
+            Optional<User> userOptional = this.userRepository.findById(id);
             if (userOptional.isPresent()) {
                 User users = userOptional.get();
                 users.setEmail(user.getEmail());

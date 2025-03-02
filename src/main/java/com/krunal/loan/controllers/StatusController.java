@@ -1,5 +1,6 @@
 package com.krunal.loan.controllers;
 
+import com.krunal.loan.models.LoanStatus;
 import com.krunal.loan.models.PaymentMode;
 import com.krunal.loan.models.UserStatus;
 import com.krunal.loan.repository.PaymentModeRepository;
@@ -97,6 +98,7 @@ public class StatusController {
         try {
             List<UserStatus> loanStatusList = userStatusRepository.findAll().stream()
                     .filter(status -> "LOAN".equals(status.getStatusType()))
+                    .filter(status -> !LoanStatus.ACTIVE.getCode().equals(status.getStatusId()))
                     .toList();
             logger.info("Found {} loan statuses", loanStatusList.size());
             return ResponseEntity.ok(loanStatusList);

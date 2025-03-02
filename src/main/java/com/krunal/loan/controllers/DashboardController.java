@@ -3,15 +3,18 @@ package com.krunal.loan.controllers;
 import com.krunal.loan.models.Emi;
 import com.krunal.loan.models.EmiStatus;
 import com.krunal.loan.models.Loan;
+import com.krunal.loan.payload.response.DashBoardLoanCountsResponse;
 import com.krunal.loan.payload.response.EmiListByDateResponse;
 import com.krunal.loan.repository.BorrowerRepository;
 import com.krunal.loan.repository.LoanRepository;
+import com.krunal.loan.service.impl.DashBoardService;
 import com.krunal.loan.service.impl.EmiService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -27,11 +30,13 @@ public class DashboardController {
     private final EmiService emiService;
     private final LoanRepository loanRepository;
     private final BorrowerRepository borrowerRepository;
+    private  final DashBoardService dashBoardService;
 
-    public DashboardController(EmiService emiService, LoanRepository loanRepository, BorrowerRepository borrowerRepository) {
+    public DashboardController(EmiService emiService, LoanRepository loanRepository, BorrowerRepository borrowerRepository, DashBoardService dashBoardService) {
         this.emiService = emiService;
         this.loanRepository = loanRepository;
         this.borrowerRepository = borrowerRepository;
+        this.dashBoardService = dashBoardService;
     }
 
     @GetMapping("/emi-list")
@@ -99,4 +104,15 @@ public class DashboardController {
             return ResponseEntity.status(500).body(null);
         }
     }
+
+
+    @GetMapping("/counts")
+    public ResponseEntity<DashBoardLoanCountsResponse> getLoanCounts(
+            @RequestParam("startDate") @DateTimeFormat(pattern = "dd-MM-yyyy") String startDate,
+            @RequestParam("endDate") @DateTimeFormat(pattern = "dd-MM-yyyy") String endDate) {
+        DashBoardLoanCountsResponse response;
+        response = dashBoardService.getDashBoardLoanCountsResponse(startDate, endDate);
+        return ResponseEntity.ok(response);
+    }
+
 }

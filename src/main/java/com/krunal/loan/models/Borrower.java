@@ -13,6 +13,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.HashSet;
@@ -79,16 +80,14 @@ public class Borrower  {
 
 	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 	@CreationTimestamp
-	@Temporal(TemporalType.TIMESTAMP)
 	@Column(updatable = false)
-	private Date addDate;
+	private LocalDateTime addDate;
 
 	private Long updatedUser;
 
 	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 	@UpdateTimestamp
-	@Temporal(TemporalType.TIMESTAMP)
-	private Date updatedDate;
+	private LocalDateTime updatedDate;
 
 	@OneToMany(mappedBy = "borrower", cascade = CascadeType.ALL, orphanRemoval = true)
 	private Set<BorrowersFile> borrowersFiles = new HashSet<>();
