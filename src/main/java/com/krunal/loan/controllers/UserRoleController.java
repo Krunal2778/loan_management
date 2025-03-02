@@ -109,12 +109,17 @@ public class UserRoleController {
     @PutMapping("/update-user/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
-    public ResponseEntity<User> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateRoleRequest user) {
+    public ResponseEntity<MessageResponse> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateRoleRequest user) {
         logger.info("Updating user by  id : {}", id);
         try {
             Optional<User> userOptional = this.userRepository.findById(id);
             if (userOptional.isPresent()) {
                 User users = userOptional.get();
+                if (Boolean.TRUE.equals(userRepository.existsByUsername(user.getUsername()))) {
+                    logger.warn("Username {} is already taken!", user.getUsername());
+                    return ResponseEntity.badRequest().body(new MessageResponse("Error: Username is already taken!"));
+                }
+                users.setUsername(user.getUsername());
                 users.setEmail(user.getEmail());
                 users.setPhoneNo(user.getPhoneNo());
                 users.setStatus(user.getStatus());
@@ -124,7 +129,7 @@ public class UserRoleController {
                     filePath = bucketUtils3.uploadImageToS3Bucket(user.getBase64Image());
                     if (filePath.equals("Error")) {
                         logger.error("Error uploading file to S3 for user: {}", user.getUsername());
-                        throw new FileUploadException("Error: Uploading file to S3");
+                        return ResponseEntity.badRequest().body(new MessageResponse("Error: Uploading file to S3"));
                     }
                     users.setFilePath(filePath);
                 }
@@ -158,14 +163,15 @@ public class UserRoleController {
                     });
                 }
                 users.setRoles(roles);
-                return new ResponseEntity<>(this.userRepository.save(users), HttpStatus.OK);
+                this.userRepository.save(users);
+                return ResponseEntity.ok(new MessageResponse("User updated successfully!"));
             } else {
                 logger.warn(USER_NOT_FOUND_WITH_ID, user.getUsername());
-                throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
+                return ResponseEntity.badRequest().body(new MessageResponse(USER_NOT_FOUND_ERROR));
             }
         } catch (Exception e) {
             logger.error("Error updating user with username: {}", user.getUsername(), e);
-            throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
+            return ResponseEntity.badRequest().body(new MessageResponse(USER_NOT_FOUND_ERROR));
         }
     }
 
@@ -180,11 +186,11 @@ public class UserRoleController {
                 return ResponseEntity.ok(new MessageResponse("User deleted successfully!"));
             } else {
                 logger.warn(USER_NOT_FOUND_WITH_ID, id);
-                throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
+                return ResponseEntity.badRequest().body(new MessageResponse(USER_NOT_FOUND_ERROR));
             }
         } catch (Exception e) {
             logger.error("Error deleting user with ID: {}", id, e);
-            throw new UserNotFoundException(USER_NOT_FOUND_ERROR);
+            return ResponseEntity.badRequest().body(new MessageResponse(USER_NOT_FOUND_ERROR));
         }
     }
 

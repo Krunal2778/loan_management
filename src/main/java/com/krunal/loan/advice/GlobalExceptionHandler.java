@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
 import java.text.ParseException;
+import java.time.format.DateTimeParseException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -130,5 +131,10 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorMessage loanNotFoundException(IllegalArgumentException ex, WebRequest request) {
         return new ErrorMessage(HttpStatus.BAD_REQUEST.value(), new Date(), ex.getMessage(), request.getDescription(false));
+    }
+
+    @ExceptionHandler(DateTimeParseException.class)
+    public ResponseEntity<MessageResponse> handleDateTimeParseException(DateTimeParseException ex, WebRequest request) {
+        return new ResponseEntity<>(new MessageResponse("Invalid date format: " + ex.getMessage()), HttpStatus.BAD_REQUEST);
     }
 }

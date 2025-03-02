@@ -13,7 +13,11 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
@@ -205,5 +209,76 @@ public class DashBoardService {
 
         logger.info("Exiting calculateBorrowerIncreasePercentage with result: {}", increasePercentage);
         return increasePercentage;
+    }
+
+    // Method to calculate months between two dates
+    private List<String> getMonthsBetweenDates(LocalDate startDate, LocalDate endDate) {
+        List<String> months = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM yyyy");
+
+        while (!startDate.isAfter(endDate)) {
+            months.add(startDate.format(formatter).toUpperCase());
+            startDate = startDate.plusMonths(1); // Move to the next month
+        }
+
+        return months;
+    }
+
+    // Method to fetch loan data for the given date range
+    public Map<String, Object> getLoanData(String localDateStart, String localDateEnd) {
+        Map<String, Object> result = new HashMap<>();
+
+        LocalDate startDate = DateUtils.getDateFromString(localDateStart, DateUtils.YMD);
+        LocalDate endDate = DateUtils.getDateFromString(localDateEnd, DateUtils.YMD);
+
+        // Calculate months between startDate and endDate
+        List<String> months = getMonthsBetweenDates(startDate, endDate);
+        result.put("months", months);
+
+        // Initialize arrays for loan counts
+        int[] totalLoans = new int[months.size()];
+        int[] activeLoans = new int[months.size()];
+        int[] closedLoans = new int[months.size()];
+
+        // Fetch loan data for each month
+        for (int i = 0; i < months.size(); i++) {
+            int year = startDate.plusMonths(i).getYear();
+            int month = startDate.plusMonths(i).getMonthValue();
+
+            // Fetch all loans for the specific month and year
+            List<Loan> loans = loanRepository.findByMonth(year, month);
+
+            // Initialize counters
+            int activeCount = 0;
+            int closedCount = 0;
+            int totalCount = 0;
+
+            // Check if loans list is empty
+            if (loans != null && !loans.isEmpty()) {
+                // Count loans based on status
+                for (Loan loan : loans) {
+                    if (loan.getStatus().equals(LoanStatus.ACTIVE.getCode())) {
+                        activeCount++;
+                    } else if (loan.getStatus().equals(LoanStatus.CLOSED.getCode())) {
+                        closedCount++;
+                    }
+                    if (!loan.getStatus().equals(LoanStatus.REJECTED.getCode())) {
+                        totalCount++;
+                    }
+                }
+            }
+
+            // Assign counts to arrays (default to 0 if loans list is empty)
+            totalLoans[i] = totalCount;
+            activeLoans[i] = activeCount;
+            closedLoans[i] = closedCount;
+        }
+
+        // Add results to the map
+        result.put("totalLoans", totalLoans);
+        result.put("activeLoans", activeLoans);
+        result.put("closedLoans", closedLoans);
+
+        return result;
     }
 }

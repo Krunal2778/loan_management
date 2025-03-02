@@ -19,8 +19,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -30,7 +32,7 @@ public class DashboardController {
     private final EmiService emiService;
     private final LoanRepository loanRepository;
     private final BorrowerRepository borrowerRepository;
-    private  final DashBoardService dashBoardService;
+    private final DashBoardService dashBoardService;
 
     public DashboardController(EmiService emiService, LoanRepository loanRepository, BorrowerRepository borrowerRepository, DashBoardService dashBoardService) {
         this.emiService = emiService;
@@ -107,12 +109,52 @@ public class DashboardController {
 
 
     @GetMapping("/counts")
-    public ResponseEntity<DashBoardLoanCountsResponse> getLoanCounts(
+    @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
+    public ResponseEntity<?> getLoanCounts(
             @RequestParam("startDate") @DateTimeFormat(pattern = "dd-MM-yyyy") String startDate,
             @RequestParam("endDate") @DateTimeFormat(pattern = "dd-MM-yyyy") String endDate) {
-        DashBoardLoanCountsResponse response;
-        response = dashBoardService.getDashBoardLoanCountsResponse(startDate, endDate);
-        return ResponseEntity.ok(response);
+        try {
+            // Validate dates
+            if (startDate == null || endDate == null) {
+                logger.error("Invalid input: startDate or endDate is null");
+                return ResponseEntity.badRequest().body(null);
+            }
+
+            logger.info("Fetching loan counts from {} to {}", startDate, endDate);
+            DashBoardLoanCountsResponse response = dashBoardService.getDashBoardLoanCountsResponse(startDate, endDate);
+            logger.info("Successfully fetched loan counts");
+            return ResponseEntity.ok(response);
+        } catch (DateTimeParseException e) {
+            logger.error("Invalid date format: expected format is yyyy-MM-dd", e);
+            return ResponseEntity.badRequest().body("Invalid date format. Expected format: yyyy-MM-dd");
+        } catch (Exception e) {
+            logger.error("Error while fetching loan counts", e);
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @GetMapping("/monthly-data")
+    public ResponseEntity<Map<String, Object>> getMonthlyLoanData(
+            @RequestParam("startDate") String startDate,
+            @RequestParam("endDate") String endDate) {
+        try {
+            // Validate input
+            if (startDate == null || startDate.isEmpty() || endDate == null || endDate.isEmpty()) {
+                logger.error("Invalid input: startDate or endDate is null or empty");
+                return ResponseEntity.badRequest().body(Map.of("error", "startDate and endDate are required"));
+            }
+
+            logger.info("Fetching loan counts from {} to {}", startDate, endDate);
+            Map<String, Object> response = dashBoardService.getLoanData(startDate, endDate);
+            logger.info("Successfully fetched loan counts");
+            return ResponseEntity.ok(response);
+        } catch (DateTimeParseException e) {
+            logger.error("Invalid date format: expected format is yyyy-MM-dd", e);
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid date format. Expected format: yyyy-MM-dd"));
+        } catch (Exception e) {
+            logger.error("Error while fetching loan counts", e);
+            return ResponseEntity.status(500).body(Map.of("error", "An internal server error occurred"));
+        }
     }
 
 }

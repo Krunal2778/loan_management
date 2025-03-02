@@ -23,6 +23,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.List;
 
@@ -66,7 +67,7 @@ public class EmiController {
 
     @GetMapping("/emi-list-by-date")
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
-    public ResponseEntity<EmiListByDateResponse> getEmiListByDateResponse(
+    public ResponseEntity<?> getEmiListByDateResponse(
             @RequestParam("startDate") @DateTimeFormat(pattern = "dd-MM-yyyy") String startDate,
             @RequestParam("endDate") @DateTimeFormat(pattern = "dd-MM-yyyy") String endDate) {
         logger.info("Received request to get EMIs between {} and {}", startDate, endDate);
@@ -87,6 +88,9 @@ public class EmiController {
             logger.info("Found bounced {} EMIs", bouncedEmis.size());
             response.setBouncedEmis(bouncedEmis);
             return ResponseEntity.ok(response);
+        } catch (DateTimeParseException e) {
+            logger.error("Invalid date format: expected format is yyyy-MM-dd", e);
+            return ResponseEntity.badRequest().body("Invalid date format. Expected format: yyyy-MM-dd");
         } catch (LoanCustomException e) {
             logger.error("Error fetching EMIs between {} and {}: {}", startDate, endDate, e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
