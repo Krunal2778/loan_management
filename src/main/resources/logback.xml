@@ -29,8 +29,6 @@
 <!--    &lt;!&ndash; Root logger level and appenders (only file logging) &ndash;&gt;-->
 <!--    <root level="info">-->
 <!--        <appender-ref ref="FILE"/>-->
-<!--         <appender-ref ref="CONSOLE"/>-->
-<!--        &lt;!&ndash; Commented out to disable console logging &ndash;&gt;-->
 <!--    </root>-->
 
     <!-- Only print file-->
