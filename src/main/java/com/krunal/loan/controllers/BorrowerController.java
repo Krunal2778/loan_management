@@ -49,10 +49,10 @@ public class BorrowerController {
     public ResponseEntity<MessageResponse> registerBorrower(@Valid @RequestBody BorrowerRequest borrowerRequest)  {
         logger.info("Registering borrower with email: {}", borrowerRequest.getEmail());
 
-        if (Boolean.TRUE.equals(borrowerRepository.existsByEmail(borrowerRequest.getEmail()))) {
-            logger.warn("Email {} is already in use!", borrowerRequest.getEmail());
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
-        }
+//        if (Boolean.TRUE.equals(borrowerRepository.existsByEmail(borrowerRequest.getEmail()))) {
+//            logger.warn("Email {} is already in use!", borrowerRequest.getEmail());
+//            return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
+//        }
 
         Set<String> stringBase64Image = borrowerRequest.getBase64Image();
         Set<BorrowersFile> base64Images = new HashSet<>();
@@ -68,7 +68,7 @@ public class BorrowerController {
         logger.info("Borrower saved with ID: {}", borrower.getBorrowerId());
 
         if (stringBase64Image == null) {
-            logger.warn("No image provided for borrower with email: {}", borrowerRequest.getEmail());
+            logger.warn("No image provided for borrower with name: {}", borrowerRequest.getName());
             return ResponseEntity.badRequest().body(new MessageResponse("Error: No image provided"));
         } else {
             Borrower finalBorrower = borrower;

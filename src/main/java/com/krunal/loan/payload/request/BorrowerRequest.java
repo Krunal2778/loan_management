@@ -24,9 +24,7 @@ public class BorrowerRequest implements Serializable {
     @Size(max = 50, message = "Father's name must be at most 50 characters")
     private String fatherName;
 
-    @NotNull(message = "Email is required")
     @Size(max = 50, message = "Email must be at most 50 characters")
-    @Email(message = "Email should be valid")
     private String email;
 
     @NotNull(message = "Phone number is required")
