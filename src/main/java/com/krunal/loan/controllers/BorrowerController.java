@@ -47,7 +47,7 @@ public class BorrowerController {
     @PreAuthorize("hasRole('MANAGER') or hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<MessageResponse> registerBorrower(@Valid @RequestBody BorrowerRequest borrowerRequest)  {
-        logger.info("Registering borrower with email: {}", borrowerRequest.getEmail());
+        logger.info("Registering borrower with name: {}", borrowerRequest.getName());
 
 //        if (Boolean.TRUE.equals(borrowerRepository.existsByEmail(borrowerRequest.getEmail()))) {
 //            logger.warn("Email {} is already in use!", borrowerRequest.getEmail());

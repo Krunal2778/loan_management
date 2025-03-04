@@ -115,7 +115,7 @@ public class UserRoleController {
             Optional<User> userOptional = this.userRepository.findById(id);
             if (userOptional.isPresent()) {
                 User users = userOptional.get();
-                if (Boolean.TRUE.equals(userRepository.existsByUsername(user.getUsername()))) {
+                if (!user.getUsername().equals(users.getUsername()) && Boolean.TRUE.equals(userRepository.existsByUsername(user.getUsername()))) {
                     logger.warn("Username {} is already taken!", user.getUsername());
                     return ResponseEntity.badRequest().body(new MessageResponse("Error: Username is already taken!"));
                 }
